@@ -333,73 +333,249 @@
         <header class="sim-head" data-reveal>
           <div>
             <p class="mono section-fig section-fig--light">CANLI DENEYİM — NASIL ÇALIŞIR?</p>
-            <h2 id="sim-title">Sistemin işletmenizde <em>nasıl işlediğini</em> adım adım görün.</h2>
+            <h2 id="sim-title">Sistemin işletmenizde <em>nasıl işlediğini</em> canlı izleyin.</h2>
           </div>
           <p class="sim-lead">
-            Sektörünüze yakın bir örnek seçin ve müşteriniz size ulaştığı andan işin tamamlanmasına kadar geçen süreci canlı izleyin.
+            Tıklama gerektirmeyen otonom stüdyoda, müşterinizin ilk temasından sonucun teslimine kadar iki ekranın nasıl eşzamanlı çalıştığını görün.
           </p>
         </header>
 
         <div class="sim-controls">
           <div class="sim-tabs" role="tablist" aria-label="Örnek senaryo seçimi">
             <button type="button" class="sim-tab is-active" role="tab" aria-selected="true" aria-controls="sim-panel" data-sim-tab="salonzeka">
-              SalonZeka · Gece Gelen Randevu
+              SalonZeka · Gece Randevu Akışı
             </button>
             <button type="button" class="sim-tab" role="tab" aria-selected="false" aria-controls="sim-panel" data-sim-tab="vitrinos">
-              VitrinOS · Hızlı Reklam Görseli
+              VitrinOS · Hızlı Reklam Stüdyosu
             </button>
             <button type="button" class="sim-tab" role="tab" aria-selected="false" aria-controls="sim-panel" data-sim-tab="yesilnesil">
-              Yeşil Nesil · Ziyaretçiden Randevuya
+              Yeşil Nesil · Keşiften Randevuya
             </button>
           </div>
-          <button type="button" class="btn btn-lime sim-run-btn" data-sim-run>
-            Süreci Başlat
-          </button>
-        </div>
 
-        <div id="sim-panel" class="sim-grid" role="tabpanel">
-          <ol class="sim-steps" aria-label="Süreç adımları">
-            <li class="sim-step is-active" data-sim-step="0">
-              <span class="mono sim-step-num" data-sim-step-code>01</span>
-              <div>
-                <h3 data-sim-step-title>Müşteri Gece Yazar</h3>
-                <p data-sim-step-desc>Saat 23:40'ta müşteriniz WhatsApp'tan "Yarın 15:00'e saç kesimi için yer var mı?" diye sorar; asistan saniyeler içinde karşılar.</p>
-              </div>
-            </li>
-            <li class="sim-step" data-sim-step="1">
-              <span class="mono sim-step-num" data-sim-step-code>02</span>
-              <div>
-                <h3 data-sim-step-title>Uygun Saat Kontrolü</h3>
-                <p data-sim-step-desc>Sistem takviminize bakar, seçilen hizmetin süresine göre çakışmayan en uygun saatleri müşteriye sunar.</p>
-              </div>
-            </li>
-            <li class="sim-step" data-sim-step="2">
-              <span class="mono sim-step-num" data-sim-step-code>03</span>
-              <div>
-                <h3 data-sim-step-title>Randevu Takvime İşlenir</h3>
-                <p data-sim-step-desc>Müşteri onayladığı anda randevu yönetim ekranınıza düşer, uzmanınıza ayrılır ve başka kimseye verilmez.</p>
-              </div>
-            </li>
-            <li class="sim-step" data-sim-step="3">
-              <span class="mono sim-step-num" data-sim-step-code>04</span>
-              <div>
-                <h3 data-sim-step-title>Unutmayı Önleyen Hatırlatma</h3>
-                <p data-sim-step-desc>Randevudan bir gün önce müşteriye nazik bir teyit mesajı gider; son dakika iptalleri ve boş koltuklar azalır.</p>
-              </div>
-            </li>
-          </ol>
-
-          <div class="sim-console">
-            <div class="sim-console-bar">
-              <span class="mono">CANLI SÜREÇ ÖZETİ</span>
-              <svg class="sim-signal-svg" width="88" height="16" viewBox="0 0 88 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path class="signal-flow" d="M2 8 H86" stroke-dasharray="6 4"></path>
-                <circle cx="82" cy="8" r="3" fill="currentColor"></circle>
-              </svg>
+          <div class="sim-meta-bar">
+            <div class="sim-live-badge">
+              <span class="sim-live-dot" aria-hidden="true"></span>
+              <span data-sim-status-text>CANLI OTONOM AKIŞ</span>
             </div>
-            <div class="sim-log" data-sim-log role="status" aria-live="polite"></div>
+            <button type="button" class="sim-replay-btn" data-sim-replay>Tekrar Oynat</button>
           </div>
         </div>
+
+        <div id="sim-panel" class="sim-stage" role="tabpanel">
+          <div class="sim-device sim-device--left" data-sim-left>
+            <div class="sim-wa-shell">
+              <div class="sim-wa-header">
+                <div class="sim-wa-avatar" aria-hidden="true">SZ</div>
+                <div class="sim-wa-head-info">
+                  <span class="sim-wa-title">SalonZeka Asistan</span>
+                  <span class="sim-wa-status">çevrimiçi</span>
+                </div>
+              </div>
+              <div class="sim-wa-body">
+                <span class="sim-wa-day">BUGÜN</span>
+                <div class="sim-wa-msg sim-wa-msg--customer">
+                  <span>Merhaba, yarın öğleden sonra kaş laminasyonu için yeriniz var mı?</span>
+                  <span class="mono sim-wa-time">23:40 <span class="sim-wa-ticks" aria-hidden="true">✓✓</span></span>
+                </div>
+                <div class="sim-wa-msg sim-wa-msg--ai">
+                  <span>Merhaba! Yarın uzmanımız Elif Hanım'da 14:30 ve 16:00 saatleri uygun. Hangisini ayıralım?</span>
+                  <span class="mono sim-wa-time">23:40</span>
+                </div>
+                <div class="sim-wa-msg sim-wa-msg--customer">
+                  <span>14:30 harika olur, lütfen onaylayın.</span>
+                  <span class="mono sim-wa-time">23:41 <span class="sim-wa-ticks" aria-hidden="true">✓✓</span></span>
+                </div>
+              </div>
+              <div class="sim-wa-inputbar" aria-hidden="true">
+                <span class="sim-wa-input-pill">Mesaj yazın...</span>
+                <span class="sim-wa-send-dot">➤</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-device sim-device--right" data-sim-right>
+            <div class="sim-rp-shell">
+              <nav class="sim-rp-sidebar" aria-label="Panel menüsü">
+                <span class="sim-rp-nav-item is-active" aria-hidden="true">◷</span>
+                <span class="sim-rp-nav-item" aria-hidden="true">☰</span>
+                <span class="sim-rp-nav-item" aria-hidden="true">★</span>
+                <span class="sim-rp-nav-item" aria-hidden="true">⚙</span>
+              </nav>
+              <div class="sim-rp-main">
+                <div class="sim-rp-topbar">
+                  <div class="sim-rp-title-wrap">
+                    <span class="sim-rp-title">Randevu Paneli</span>
+                    <span class="sim-rp-subtitle">Elif Hanım · Kaş &amp; Kirpik</span>
+                  </div>
+                  <div class="sim-rp-stats">
+                    <div class="sim-rp-stat">
+                      <span class="sim-rp-stat-label">BUGÜN</span>
+                      <span class="mono sim-rp-stat-val">14</span>
+                    </div>
+                    <div class="sim-rp-stat">
+                      <span class="sim-rp-stat-label">HAFTALIK BAŞARI</span>
+                      <span class="mono sim-rp-stat-val">%96</span>
+                    </div>
+                    <div class="sim-rp-stat">
+                      <span class="sim-rp-stat-label">KUYRUK</span>
+                      <span class="mono sim-rp-stat-val">1</span>
+                    </div>
+                  </div>
+                  <span class="sim-rp-add-btn">+ Yeni Ekle</span>
+                </div>
+
+                <div class="sim-rp-filters">
+                  <span class="sim-rp-filter-label">DURUM</span>
+                  <span class="sim-rp-pill is-active">Tümü</span>
+                  <span class="sim-rp-pill">Onaylandı</span>
+                  <span class="sim-rp-pill">Bekleyen</span>
+                </div>
+
+                <div class="sim-rp-workspace">
+                  <div class="sim-rp-grid">
+                    <div class="sim-rp-grid-head">
+                      <span class="sim-rp-hour"></span>
+                      <span class="sim-rp-day-col">PER 12</span>
+                      <span class="sim-rp-day-col">CUM 13</span>
+                      <span class="sim-rp-day-col is-today">CMT 14</span>
+                      <span class="sim-rp-day-col">PAZ 15</span>
+                    </div>
+                    <div class="sim-rp-grid-body">
+                      <div class="sim-rp-row">
+                        <span class="mono sim-rp-hour">12:00</span>
+                        <div class="sim-rp-cells">
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Selin · Fön</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Merve · Bakım</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Selin · Fön</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Ayşe · Kesim</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="sim-rp-row">
+                        <span class="mono sim-rp-hour">13:00</span>
+                        <div class="sim-rp-cells">
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Buse · Lazer</span>
+                          </div>
+                          <div class="sim-rp-cell"></div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Derya · Boya</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Naz · Protez</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="sim-rp-row">
+                        <span class="mono sim-rp-hour">14:00</span>
+                        <div class="sim-rp-cells">
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Merve · Bakım</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Ceren · Cilt</span>
+                          </div>
+                          <div class="sim-rp-cell is-booked">
+                            <span class="sim-rp-event">14:30 · Zeynep</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Ece · Manikür</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="sim-rp-row">
+                        <span class="mono sim-rp-hour">15:00</span>
+                        <div class="sim-rp-cells">
+                          <div class="sim-rp-cell"></div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Ayşe · Kesim</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Ece · Manikür</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Buse · Lazer</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="sim-rp-row">
+                        <span class="mono sim-rp-hour">16:00</span>
+                        <div class="sim-rp-cells">
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Derya · Boya</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Naz · Protez</span>
+                          </div>
+                          <div class="sim-rp-cell"></div>
+                          <div class="sim-rp-cell"></div>
+                        </div>
+                      </div>
+                      <div class="sim-rp-row">
+                        <span class="mono sim-rp-hour">17:00</span>
+                        <div class="sim-rp-cells">
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Ece · Manikür</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Buse · Lazer</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Ceren · Cilt</span>
+                          </div>
+                          <div class="sim-rp-cell">
+                            <span class="sim-rp-event sim-rp-event--existing">Selin · Fön</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <aside class="sim-rp-agenda" aria-label="Bugünün akışı">
+                    <div class="sim-rp-agenda-head">
+                      <span>BUGÜNÜN AKIŞI</span>
+                      <span class="mono sim-rp-agenda-badge">1</span>
+                    </div>
+                    <div class="sim-rp-booked-card">
+                      <strong>14:30 · Zeynep Hanım</strong>
+                      <span>Kaş Laminasyon · Elif Hanım</span>
+                    </div>
+                    <div class="sim-rp-reminder">
+                      WhatsApp Hatırlatma Planlandı · 24 saat önce
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ol class="sim-timeline" aria-label="Otonom süreç adımları">
+          <li class="sim-timeline-step is-active" data-sim-step="0">
+            <span class="mono sim-timeline-code" data-sim-step-code>01</span>
+            <span class="sim-timeline-title" data-sim-step-title>Gece Mesajı Karşılanır</span>
+          </li>
+          <li class="sim-timeline-step" data-sim-step="1">
+            <span class="mono sim-timeline-code" data-sim-step-code>02</span>
+            <span class="sim-timeline-title" data-sim-step-title>Takvimden Saat Taranır</span>
+          </li>
+          <li class="sim-timeline-step" data-sim-step="2">
+            <span class="mono sim-timeline-code" data-sim-step-code>03</span>
+            <span class="sim-timeline-title" data-sim-step-title>Müşteri Saati Seçer</span>
+          </li>
+          <li class="sim-timeline-step" data-sim-step="3">
+            <span class="mono sim-timeline-code" data-sim-step-code>04</span>
+            <span class="sim-timeline-title" data-sim-step-title>Randevu &amp; Hatırlatma Kurulur</span>
+          </li>
+        </ol>
       </div>
     </section>
 

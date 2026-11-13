@@ -14,28 +14,28 @@ export const SIMULATOR_SCENARIOS = {
         title: 'Müşteri WhatsApp’tan Yazar',
         detail: 'Saat 23:40’ta bir müşteriniz yarın için kaş laminasyonu randevusu olup olmadığını sorar.',
         status: 'Mesaj Alındı · 23:40',
-        logSummary: 'Müşteri mesajı: “Merhaba, yarın 14:30 için kaş laminasyon randevunuz müsait mi?”',
+        logSummary: 'Müşteri mesajı: “Merhaba, yarın öğleden sonra kaş laminasyonu için yeriniz var mı?”',
       },
       {
         code: '02 · UYGUN SAAT',
         title: 'Asistan Uygun Saati Önerir',
         detail: 'Sistem takviminizi ve uzman çalışma saatlerini kontrol edip saniyeler içinde uygun saatleri sunar.',
         status: 'Uygun Saat Bulundu',
-        logSummary: 'Asistan yanıtı: “Yarın 14:30 ve 15:15 saatlerimiz uygun. Hangisini sizin için ayıralım?”',
+        logSummary: 'Asistan yanıtı: “Yarın uzmanımız Elif Hanım’da 14:30 ve 16:00 saatleri uygun.”',
       },
       {
         code: '03 · TAKVİM KAYDI',
         title: 'Randevu Takvime İşlenir',
         detail: 'Müşteriniz saati onayladığı anda randevu çakışma olmadan işletme takviminize eklenir.',
         status: 'Onaylandı · 14:30',
-        logSummary: 'Takvim güncellendi: Elif Hanım · Yarın 14:30 · Kaş Laminasyon (Onay mesajı gönderildi).',
+        logSummary: 'Takvim güncellendi: Zeynep Hanım · Yarın 14:30 · Kaş Laminasyon (Onaylandı).',
       },
       {
         code: '04 · HATIRLATMA',
         title: 'Otomatik Hatırlatma Gider',
         detail: 'Randevu günü yaklaştığında müşterinize nazik bir hatırlatma mesajı gider, boş koltuk riski azalır.',
         status: 'Hatırlatma Planlandı',
-        logSummary: 'Randevudan 24 saat önce müşteriye otomatik WhatsApp hatırlatması gönderilmek üzere sıraya alındı.',
+        logSummary: 'WhatsApp Hatırlatma Planlandı · Randevudan 24 saat önce.',
       },
     ],
   },
@@ -57,98 +57,776 @@ export const SIMULATOR_SCENARIOS = {
         title: 'Marka Renk ve Tarzınız Uygulanır',
         detail: 'Sistem logonuzu, renk paletinizi ve vitrin dilinizi otomatik tanıyarak uyumlu bir sahne kurar.',
         status: 'Marka Uyumu Tamam',
-        logSummary: 'Marka kimliği uygulandı: Doğal gün ışığı, sıcak bej arka plan ve kurumsal yazı tipi seçildi.',
+        logSummary: 'Marka kimliği uygulandı: Marka Paleti, Tipografi ve Doğal Gün Işığı.',
       },
       {
         code: '03 · GÖRSEL ÜRETİMİ',
         title: 'Sosyal Medya Görselleri Hazırlanır',
         detail: 'Hem Instagram gönderisi hem de dikey hikaye ölçülerine uygun yüksek kaliteli görseller oluşturulur.',
         status: '2 Format Hazır',
-        logSummary: 'Gönderi (4:5) ve Hikaye (9:16) boyutlarında net, filigransız kampanya görselleri hazırlandı.',
+        logSummary: '4:5 Instagram Gönderisi ve 9:16 Hikâye boyutlarında kampanya görselleri hazırlandı.',
       },
       {
         code: '04 · TEK TIKLA YAYIN',
-        title: 'Tek Tıkla Onaylanıp Yayına Alınır',
+        title: 'Yayına Hazır Hale Gelir',
         detail: 'Beğendiğiniz görseli panelden tek dokunuşla onaylar, tasarımcı beklemeden paylaşmaya başlarsınız.',
         status: 'Yayına Hazır',
-        logSummary: 'Görsel onaylandı ve indirmeye hazır hale geldi. Ekibiniz doğrudan paylaşıma geçebilir.',
+        logSummary: 'Yayına Hazır · Tasarımcı beklemeden indirin.',
       },
     ],
   },
   yesilnesil: {
     id: 'yesilnesil',
-    name: 'Yeşil Nesil · Hızlı Tanıtım ve Randevu Vitrini',
+    name: 'Yeşil Nesil · Google Keşfi & 0.4 sn Orijinal Vitrin',
     summary:
-      'Mekânınızı Google’da bulan çiftler sayfayı anında açar, bahçeleri inceler ve tek tıkla WhatsApp’tan randevu ister.',
+      'Google’da mekânınızı arayan çiftler ilk sırada sitenizi görür, tıklar ve 0.4 sn’de açılan orijinal vitrininizle doğrudan keşif talebine geçer.',
     steps: [
       {
-        code: '01 · İLK KEŞİF',
-        title: 'Müşteri Google’da Mekânınızı Bulur',
-        detail: 'Kır düğünü veya davet arayan çiftler Google aramalarında mekânınıza güvenilir bilgilerle ulaşır.',
-        status: 'Mekân Görüntülendi',
-        logSummary: 'Ziyaretçi “kır düğünü mekânları” aramasından doğrudan tanıtım sayfanıza giriş yaptı.',
+        code: '01 · GOOGLE ARAMA',
+        title: 'Çiftler Google’da Mekânınızı Arar',
+        detail:
+          '“Kır düğünü mekânları” aramasında Yeşil Nesil The Garden ilk sırada görünür.',
+        status: 'İlk Sırada',
+        logSummary:
+          'Google aramasında “kır düğünü mekânları” sorgusuyla yesilnesilthegarden.com ilk sırada listelendi.',
       },
       {
-        code: '02 · HIZLI AÇILIŞ',
-        title: 'Sayfa Saniyeler İçinde Açılır',
-        detail: 'Ağır yüklemeler veya bekleten ekranlar olmadan fotoğraflar ve bilgiler mobilde anında açılır.',
-        status: 'Anında Açıldı',
-        logSummary: 'Mobil bağlantıda bile tüm galeri ve mekân bilgileri beklemeden, akıcı şekilde yüklendi.',
+        code: '02 · SONUCA TIKLAMA',
+        title: 'Ziyaretçi İlk Sonuca Tıklar',
+        detail:
+          'Aracı veya komisyon sitelerine gitmeden doğrudan işletme sonucuna tıklanır.',
+        status: 'Sonuca Tıklandı',
+        logSummary:
+          'Ziyaretçi Google sonuçlarında Yeşil Nesil The Garden bağlantısına tıkladı.',
       },
       {
-        code: '03 · BAHÇE & PAKET',
-        title: 'Paket ve Bahçeleri İnceler',
-        detail: 'Çiftler bahçe kapasitelerini, konseptleri ve hizmet paketlerini karmaşa yaşamadan karşılaştırır.',
-        status: 'Kale Bahçesi Seçildi',
-        logSummary: 'Seçilen ilgi alanı: Kale Bahçesi (250–350 kişi) · Yaz sezonu ve dış çekim paketi.',
+        code: '03 · HIZLI AÇILIŞ',
+        title: 'Orijinal Site 0.4 sn’de Açılır',
+        detail:
+          'yesilnesilthegarden.com tarayıcıda gecikmesiz açılır ve tüm vitrin anında yüklenir.',
+        status: "0.4 sn'de Açıldı",
+        logSummary:
+          "yesilnesilthegarden.com 0.4 sn'de açıldı · Orijinal site vitrini ekrana geldi.",
       },
       {
-        code: '04 · WHATSAPP TALEBİ',
-        title: 'Tek Tıkla WhatsApp’tan Randevu İster',
-        detail: 'Uzun iletişim formlarıyla uğraşmadan, seçtiği bahçe bilgisi hazır halde tek tıkla size yazar.',
-        status: 'Randevu İstendi',
-        logSummary: 'WhatsApp mesajı hazırlandı: “Kale Bahçesi için 250-350 kişilik yaz dönemi görüşmesi almak istiyoruz.”',
+        code: '04 · KEŞİF HAZIR',
+        title: 'Doğrudan Keşif & Randevu Hazır',
+        detail:
+          'Sıfır aracı ve sıfır komisyonla çiftler doğrudan keşif ve randevu talebi oluşturur.',
+        status: 'Keşif Hazır',
+        logSummary:
+          "0.4 sn'de açılan vitrin · Doğrudan keşif ve randevu talebi hazır.",
       },
     ],
   },
 };
 
-function isMotionReduced() {
+const LOOP_RESTART_DELAY_MS = 4000;
+
+function isMotionPaused() {
   const prefersReduced =
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const paused = document.documentElement.getAttribute('data-motion') === 'paused';
+  const paused = document.documentElement.dataset.motion === 'paused';
   return prefersReduced || paused;
 }
 
-function appendLogEntry(logContainer, step) {
-  const entry = document.createElement('div');
-  entry.className = 'sim-log-entry';
+function createEl(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) {
+    el.className = className;
+  }
+  if (text !== undefined) {
+    el.textContent = text;
+  }
+  return el;
+}
 
-  const meta = document.createElement('div');
-  meta.className = 'sim-log-meta';
+function buildDeviceFrame(title, tagText) {
+  const head = createEl('div', 'sim-device-head');
+  const titleEl = createEl('span', 'sim-device-title', title);
+  const tagEl = createEl('span', 'sim-device-tag', tagText);
+  head.append(titleEl, tagEl);
 
-  const codeEl = document.createElement('span');
-  codeEl.className = 'sim-log-code';
-  codeEl.textContent = step.code;
+  const body = createEl('div', 'sim-device-body');
+  return { head, body };
+}
 
-  const statusEl = document.createElement('span');
-  statusEl.className = 'sim-log-status';
-  statusEl.textContent = step.status;
+function createSvgIcon(pathDataList, viewBox = '0 0 24 24') {
+  const svgNs = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNs, 'svg');
+  svg.setAttribute('viewBox', viewBox);
+  svg.setAttribute('width', '15');
+  svg.setAttribute('height', '15');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
 
-  meta.append(codeEl, statusEl);
+  for (const d of pathDataList) {
+    const path = document.createElementNS(svgNs, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+  }
+  return svg;
+}
 
-  const summaryEl = document.createElement('p');
-  summaryEl.className = 'sim-log-summary';
-  summaryEl.textContent = step.logSummary;
+function createTypingIndicator() {
+  const wrap = createEl('div', 'sim-wa-typing');
+  wrap.setAttribute('aria-hidden', 'true');
+  wrap.append(
+    createEl('span', 'sim-typing-dot'),
+    createEl('span', 'sim-typing-dot'),
+    createEl('span', 'sim-typing-dot'),
+  );
+  return wrap;
+}
 
-  entry.append(meta, summaryEl);
-  logContainer.append(entry);
-  logContainer.scrollTop = logContainer.scrollHeight;
+function createWhatsAppMessage(variant, text, timeText) {
+  const msg = createEl('div', `sim-wa-msg sim-wa-msg--${variant}`);
+  const p = createEl('p', '', text);
+  const timeEl = createEl('span', 'sim-wa-time', timeText);
+  if (variant === 'customer') {
+    timeEl.append(createEl('span', 'sim-wa-ticks', ' ✓✓'));
+  }
+  msg.append(p, timeEl);
+  return msg;
+}
+
+function buildWhatsAppShell() {
+  const shell = createEl('div', 'sim-wa-shell');
+
+  const header = createEl('div', 'sim-wa-header');
+  const avatar = createEl('div', 'sim-wa-avatar', 'SZ');
+  const headInfo = createEl('div', 'sim-wa-head-info');
+  const titleEl = createEl('div', 'sim-wa-title', 'SalonZeka Asistan');
+  const statusEl = createEl('div', 'sim-wa-status', 'çevrimiçi');
+  headInfo.append(titleEl, statusEl);
+  header.append(avatar, headInfo);
+
+  const body = createEl('div', 'sim-wa-body');
+  const dayPill = createEl('div', 'sim-wa-day', 'Bugün');
+  body.append(dayPill);
+
+  const inputBar = createEl('div', 'sim-wa-inputbar');
+  const inputPill = createEl('div', 'sim-wa-input-pill', 'Mesaj yazın...');
+  const sendDot = createEl('div', 'sim-wa-send-dot');
+  sendDot.append(createSvgIcon(['M22 2L11 13', 'M22 2l-7 20-4-9-9-4 20-7z']));
+  inputBar.append(inputPill, sendDot);
+
+  shell.append(header, body, inputBar);
+  return { shell, body, statusEl };
+}
+
+function buildRandevuPanelShell() {
+  const shell = createEl('div', 'sim-rp-shell');
+
+  const sidebar = createEl('div', 'sim-rp-sidebar');
+  const navIcons = [
+    ['M8 2v4', 'M16 2v4', 'M3 10h18', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'],
+    ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+    ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
+    ['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'],
+  ];
+  navIcons.forEach((paths, idx) => {
+    const item = createEl('div', idx === 0 ? 'sim-rp-nav-item is-active' : 'sim-rp-nav-item');
+    item.append(createSvgIcon(paths));
+    sidebar.append(item);
+  });
+
+  const main = createEl('div', 'sim-rp-main');
+
+  const topbar = createEl('div', 'sim-rp-topbar');
+  const titleWrap = createEl('div', 'sim-rp-title-wrap');
+  titleWrap.append(
+    createEl('div', 'sim-rp-title', 'Randevu Paneli'),
+    createEl('div', 'sim-rp-subtitle', '9 - 15 Kasım 2026'),
+  );
+
+  const stats = createEl('div', 'sim-rp-stats');
+  const createStat = (label, initialVal) => {
+    const stat = createEl('div', 'sim-rp-stat');
+    const labelEl = createEl('span', 'sim-rp-stat-label', label);
+    const valEl = createEl('span', 'sim-rp-stat-val', initialVal);
+    stat.append(labelEl, valEl);
+    return { stat, valEl };
+  };
+  const todayStat = createStat('BUGÜN', '4');
+  const weeklyStat = createStat('HAFTALIK BAŞARI', '%0');
+  const queueStat = createStat('KUYRUK', '0');
+  stats.append(todayStat.stat, weeklyStat.stat, queueStat.stat);
+
+  const addBtn = createEl('span', 'sim-rp-add-btn', '+ Yeni Ekle');
+  topbar.append(titleWrap, stats, addBtn);
+
+  const filters = createEl('div', 'sim-rp-filters');
+  filters.append(createEl('span', 'sim-rp-filter-label', 'DURUM:'));
+  ['Tümü', 'Bekliyor', 'Tamamlandı', 'İptal'].forEach((label, idx) => {
+    filters.append(createEl('span', idx === 0 ? 'sim-rp-pill is-active' : 'sim-rp-pill', label));
+  });
+
+  const workspace = createEl('div', 'sim-rp-workspace');
+
+  const grid = createEl('div', 'sim-rp-grid');
+  const gridHead = createEl('div', 'sim-rp-grid-head');
+  gridHead.append(createEl('div', 'sim-rp-hour', ''));
+  const days = ['PER 12', 'CUM 13', 'CMT 14', 'PAZ 15'];
+  days.forEach((day, idx) => {
+    gridHead.append(createEl('div', idx === 2 ? 'sim-rp-day-col is-today' : 'sim-rp-day-col', day));
+  });
+
+  const existingEvents = {
+    '12:00': ['Selin · Fön', 'Merve · Bakım', 'Selin · Fön', 'Ayşe · Kesim'],
+    '13:00': ['Buse · Lazer', null, 'Derya · Boya', 'Naz · Protez'],
+    '14:00': ['Merve · Bakım', 'Ceren · Cilt', null, 'Ece · Manikür'],
+    '15:00': [null, 'Ayşe · Kesim', 'Ece · Manikür', 'Buse · Lazer'],
+    '16:00': ['Derya · Boya', 'Naz · Protez', null, null],
+    '17:00': ['Ece · Manikür', 'Buse · Lazer', 'Ceren · Cilt', 'Selin · Fön'],
+  };
+
+  const gridBody = createEl('div', 'sim-rp-grid-body');
+  const hours = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+  const cellMap = {};
+  for (const hour of hours) {
+    const row = createEl('div', 'sim-rp-row');
+    row.append(createEl('div', 'sim-rp-hour', hour));
+    const cellsWrap = createEl('div', 'sim-rp-cells');
+    const rowCells = [];
+    for (let d = 0; d < days.length; d += 1) {
+      const cell = createEl('div', 'sim-rp-cell');
+      const existingLabel = existingEvents[hour]?.[d];
+      if (existingLabel) {
+        cell.append(createEl('div', 'sim-rp-event sim-rp-event--existing', existingLabel));
+      }
+      cellsWrap.append(cell);
+      rowCells.push(cell);
+    }
+    cellMap[hour] = rowCells;
+    row.append(cellsWrap);
+    gridBody.append(row);
+  }
+  grid.append(gridHead, gridBody);
+
+  const agenda = createEl('div', 'sim-rp-agenda');
+  const agendaHead = createEl('div', 'sim-rp-agenda-head');
+  const agendaTitle = createEl('span', '', 'BUGÜNÜN AKIŞI');
+  const agendaBadge = createEl('span', 'sim-rp-agenda-badge', 'GÜNLÜK BAŞARI: %0');
+  agendaHead.append(agendaTitle, agendaBadge);
+
+  const agendaEmpty = createEl('div', 'sim-rp-empty', 'Harika! Bugün için randevu bulunmuyor.');
+  agenda.append(agendaHead, agendaEmpty);
+
+  workspace.append(grid, agenda);
+  main.append(topbar, filters, workspace);
+  shell.append(sidebar, main);
+
+  return {
+    shell,
+    todayValEl: todayStat.valEl,
+    weeklyValEl: weeklyStat.valEl,
+    cell1400: cellMap['14:00'][2],
+    cell1600: cellMap['16:00'][2],
+    agenda,
+    agendaBadge,
+    agendaEmpty,
+  };
 }
 
 /**
- * İnteraktif Sistem Simülatörünü başlatır.
+ * SalonZeka: Sol WhatsApp <-> Sağ Randevu Paneli otonom sahnesini kurar.
+ */
+function setupSalonZekaStage(leftEl, rightEl, instantComplete, schedule) {
+  const wa = buildWhatsAppShell();
+  leftEl.replaceChildren(wa.shell);
+
+  const rp = buildRandevuPanelShell();
+  rightEl.replaceChildren(rp.shell);
+
+  const appendWaMessage = (variant, text, timeText) => {
+    wa.body.append(createWhatsAppMessage(variant, text, timeText));
+    wa.body.scrollTop = wa.body.scrollHeight;
+  };
+
+  const applyStep0 = () => {
+    appendWaMessage(
+      'customer',
+      'Merhaba, yarın öğleden sonra kaş laminasyonu için yeriniz var mı?',
+      '23:40',
+    );
+  };
+
+  const applyStep1Scan = () => {
+    rp.cell1400.classList.add('is-scanning');
+    rp.cell1600.classList.add('is-scanning');
+  };
+
+  const applyStep1Msg = () => {
+    wa.statusEl.textContent = 'çevrimiçi';
+    appendWaMessage(
+      'ai',
+      "Merhaba! Yarın uzmanımız Elif Hanım'da 14:30 ve 16:00 saatleri uygun. Hangisini ayıralım?",
+      '23:40',
+    );
+  };
+
+  const applyStep2 = () => {
+    appendWaMessage('customer', '14:30 süper olur, adım Zeynep.', '23:41');
+  };
+
+  const applyStep3 = () => {
+    wa.statusEl.textContent = 'çevrimiçi';
+    appendWaMessage(
+      'ai',
+      'Tamamdır Zeynep Hanım, yarın 14:30 için randevunuz oluşturuldu. 24 saat önce hatırlatma göndereceğiz.',
+      '23:41',
+    );
+
+    rp.cell1400.classList.remove('is-scanning');
+    rp.cell1400.classList.add('is-booked');
+    rp.cell1400.append(createEl('div', 'sim-rp-event', '14:30 · Zeynep'));
+
+    rp.cell1600.classList.remove('is-scanning');
+
+    rp.todayValEl.textContent = '5';
+    rp.weeklyValEl.textContent = '%100';
+    rp.agendaBadge.textContent = 'GÜNLÜK BAŞARI: %100';
+
+    rp.agendaEmpty.remove();
+    rp.agenda.append(
+      createEl('div', 'sim-rp-booked-card', '14:30 · Zeynep Hanım · Kaş Laminasyon · Onaylandı'),
+      createEl('div', 'sim-rp-reminder', '24 saat önce WhatsApp hatırlatma planlandı'),
+    );
+  };
+
+  if (instantComplete) {
+    applyStep0();
+    applyStep1Msg();
+    applyStep2();
+    applyStep3();
+    return 0;
+  }
+
+  let typingEl = createTypingIndicator();
+  wa.body.append(typingEl);
+
+  schedule(0, 850, () => {
+    typingEl.remove();
+    applyStep0();
+  });
+
+  schedule(1, 2000, () => {
+    applyStep1Scan();
+    wa.statusEl.textContent = 'yazıyor...';
+    typingEl = createTypingIndicator();
+    wa.body.append(typingEl);
+  });
+
+  schedule(1, 3000, () => {
+    typingEl.remove();
+    applyStep1Msg();
+  });
+
+  schedule(2, 4300, () => {
+    typingEl = createTypingIndicator();
+    wa.body.append(typingEl);
+  });
+
+  schedule(2, 5200, () => {
+    typingEl.remove();
+    applyStep2();
+  });
+
+  schedule(3, 5800, () => {
+    wa.statusEl.textContent = 'yazıyor...';
+    typingEl = createTypingIndicator();
+    wa.body.append(typingEl);
+  });
+
+  schedule(3, 6700, () => {
+    typingEl.remove();
+    applyStep3();
+  });
+
+  return 6700;
+}
+
+/**
+ * VitrinOS: Sol Koyu Stüdyo Üretim Emri <-> Sağ Canlı Kreatif Çıktı otonom sahnesini kurar.
+ */
+function setupVitrinOSStage(leftEl, rightEl, instantComplete, schedule) {
+  const BRIEF_TEXT =
+    'Yeni sezon keten elbise — hafta sonuna özel %20 indirimli tanıtım görseli.';
+
+  /* --- SOL PANEL: .sim-vo-panel --- */
+  const leftPanel = createEl('div', 'sim-vo-panel');
+
+  const leftHeader = createEl('div', 'sim-vo-header');
+  const leftTitleGroup = createEl('div', 'sim-vo-title-group');
+  const leftEyebrow = createEl('span', 'sim-vo-eyebrow', 'YENİ ÜRETİM EMRİ');
+  const leftTitle = createEl('h4', 'sim-vo-title', 'Görsel Önizlemesi Üret');
+  leftTitleGroup.append(leftEyebrow, leftTitle);
+  const enginePill = createEl('span', 'sim-vo-pill', 'VitrinOS Motoru');
+  leftHeader.append(leftTitleGroup, enginePill);
+
+  /* Hızlı Öneri çipleri */
+  const chipsSection = createEl('div', 'sim-vo-field');
+  const chipsLabel = createEl('span', 'sim-vo-label', 'Hızlı Öneri:');
+  const chipsWrap = createEl('div', 'sim-vo-chips');
+  const chipLabels = ['İndirim Banner', 'Lansman Post', 'Flaş Kampanya Story'];
+  const chipEls = chipLabels.map((label) => createEl('span', 'sim-vo-chip', label));
+  chipsWrap.append(...chipEls);
+  chipsSection.append(chipsLabel, chipsWrap);
+
+  /* Brief Açıklaması */
+  const briefSection = createEl('div', 'sim-vo-field');
+  const briefLabel = createEl('span', 'sim-vo-label', 'Brief Açıklaması');
+  const textareaBox = createEl('div', 'sim-vo-textarea');
+  const briefTextEl = createEl(
+    'span',
+    'sim-vo-textarea-text is-placeholder',
+    'Kampanya notu bekleniyor...',
+  );
+  textareaBox.append(briefTextEl);
+  briefSection.append(briefLabel, textareaBox);
+
+  /* Referans Ürün Görseli (Dropzone) */
+  const dropSection = createEl('div', 'sim-vo-field');
+  const dropLabel = createEl('span', 'sim-vo-label', 'Referans Ürün Görseli');
+  const dropzone = createEl('div', 'sim-vo-dropzone');
+  const dropEmpty = createEl(
+    'span',
+    'sim-vo-dropzone-empty',
+    'Ham ürün fotoğrafı bekleniyor...',
+  );
+  const dropPreview = createEl('div', 'sim-vo-dropzone-preview');
+  const photo = createEl('img', 'sim-vo-thumb');
+  photo.src = 'assets/img/vitrinos-scene.jpg';
+  photo.alt = 'VitrinOS ham ürün fotoğrafı';
+  const dropMeta = createEl('div', 'sim-vo-dropzone-meta');
+  const dropFile = createEl('span', 'sim-vo-dropzone-file', 'keten-elbise-ham.jpg');
+  const dropHint = createEl('span', 'sim-vo-dropzone-hint', 'Referans görsel yüklendi');
+  dropMeta.append(dropFile, dropHint);
+  dropPreview.append(photo, dropMeta);
+  dropzone.append(dropEmpty);
+  dropSection.append(dropLabel, dropzone);
+
+  /* Alt 2'li seçim */
+  const selectsGrid = createEl('div', 'sim-vo-selects');
+  const formatBox = createEl('div', 'sim-vo-select-box');
+  const formatLabel = createEl('span', 'sim-vo-select-label', 'Çıktı Formatı');
+  const formatVal = createEl('span', 'sim-vo-select-value', 'Otomatik Tespit Et');
+  formatBox.append(formatLabel, formatVal);
+
+  const brandBox = createEl('div', 'sim-vo-select-box');
+  const brandLabel = createEl('span', 'sim-vo-select-label', 'Uygulanacak Marka');
+  const brandVal = createEl('span', 'sim-vo-select-value', 'Seçili Marka Kimliği');
+  brandBox.append(brandLabel, brandVal);
+  selectsGrid.append(formatBox, brandBox);
+
+  /* Alt tam genişlik lime buton */
+  const submitBtn = createEl('div', 'sim-vo-submit', 'Üretimi Başlat');
+
+  leftPanel.append(
+    leftHeader,
+    chipsSection,
+    briefSection,
+    dropSection,
+    selectsGrid,
+    submitBtn,
+  );
+  leftEl.replaceChildren(leftPanel);
+
+  /* --- SAĞ PANEL: .sim-vo-output-panel --- */
+  const rightPanel = createEl('div', 'sim-vo-output-panel');
+
+  const rightHeader = createEl('div', 'sim-vo-header');
+  const rightTitleGroup = createEl('div', 'sim-vo-title-group');
+  const rightEyebrow = createEl('span', 'sim-vo-eyebrow', 'CANLI KREATİF ÇIKTI');
+  const rightTitle = createEl('h4', 'sim-vo-title', 'Kreatif Hazırlanıyor');
+  rightTitleGroup.append(rightEyebrow, rightTitle);
+  const statusBadge = createEl('span', 'sim-vo-badge', 'BEKLİYOR');
+  rightHeader.append(rightTitleGroup, statusBadge);
+
+  /* İnce ızgara desenli koyu sahne alanı */
+  const canvas = createEl('div', 'sim-vo-canvas');
+
+  const progressWrap = createEl('div', 'sim-vo-progress-wrap');
+  const progressLabel = createEl('span', 'sim-vo-progress-label', 'Stüdyo Sahnesi Bekleniyor');
+  const progressTrack = createEl('div', 'sim-vo-progress');
+  const progressBar = createEl('div', 'sim-vo-progress-bar');
+  progressBar.style.width = '12%';
+  progressTrack.append(progressBar);
+  progressWrap.append(progressLabel, progressTrack);
+
+  const resultStage = createEl('div', 'sim-vo-result');
+  canvas.append(progressWrap, resultStage);
+
+  const readyBanner = createEl(
+    'div',
+    'sim-vo-ready-banner',
+    'Yayına Hazır · Tasarımcı beklemeden indirin',
+  );
+
+  rightPanel.append(rightHeader, canvas, readyBanner);
+  rightEl.replaceChildren(rightPanel);
+
+  /* --- ADIM UYGULAYICILARI --- */
+  const applyStep0 = () => {
+    chipEls[0].classList.add('is-active');
+    briefTextEl.classList.remove('is-placeholder');
+    briefTextEl.textContent = BRIEF_TEXT;
+    textareaBox.classList.add('is-filled');
+    progressBar.style.width = '24%';
+  };
+
+  const applyStep1 = () => {
+    if (!dropzone.contains(dropPreview)) {
+      dropzone.replaceChildren(dropPreview);
+      dropzone.classList.add('is-filled');
+    }
+    formatBox.classList.add('is-active');
+    brandBox.classList.add('is-active');
+    submitBtn.classList.add('is-active');
+    statusBadge.textContent = 'HAZIRLANIYOR';
+    statusBadge.classList.add('is-working');
+    progressLabel.textContent = 'Marka kimliği & ışık sahnesi işleniyor...';
+    progressBar.style.width = '64%';
+  };
+
+  const applyStep2 = () => {
+    progressLabel.textContent = 'Kreatif render tamamlandı';
+    progressBar.style.width = '100%';
+    progressWrap.classList.add('is-done');
+
+    if (resultStage.childElementCount === 0) {
+      const previewCard = createEl('div', 'sim-vo-preview-card');
+      const img = createEl('img', 'sim-vo-result-img');
+      img.src = 'assets/img/vitrinos-real.png';
+      img.alt = 'VitrinOS üretilen kampanya görseli';
+
+      const formatTags = createEl('div', 'sim-vo-format-tags');
+      const tagPost = createEl('span', 'sim-vo-format-tag', '4:5 Gönderi');
+      const tagSep = createEl('span', 'sim-vo-format-sep', '&');
+      const tagStory = createEl('span', 'sim-vo-format-tag', '9:16 Hikâye');
+      formatTags.append(tagPost, tagSep, tagStory);
+
+      previewCard.append(img, formatTags);
+      resultStage.append(previewCard);
+    }
+    resultStage.classList.add('is-visible');
+  };
+
+  const applyStep3 = () => {
+    rightTitle.textContent = 'Kreatif Hazır';
+    statusBadge.textContent = 'HAZIR';
+    statusBadge.classList.remove('is-working');
+    statusBadge.classList.add('is-ready');
+    readyBanner.classList.add('is-visible');
+  };
+
+  if (instantComplete) {
+    applyStep0();
+    applyStep1();
+    applyStep2();
+    applyStep3();
+    return 0;
+  }
+
+  schedule(0, 300, () => {
+    chipEls[0].classList.add('is-active');
+    progressBar.style.width = '18%';
+  });
+
+  schedule(0, 750, () => {
+    applyStep0();
+  });
+
+  schedule(1, 1450, () => {
+    if (!dropzone.contains(dropPreview)) {
+      dropzone.replaceChildren(dropPreview);
+      dropzone.classList.add('is-filled');
+    }
+    progressBar.style.width = '42%';
+  });
+
+  schedule(1, 2000, () => {
+    formatBox.classList.add('is-active');
+    brandBox.classList.add('is-active');
+    statusBadge.textContent = 'HAZIRLANIYOR';
+    statusBadge.classList.add('is-working');
+    progressLabel.textContent = 'Marka kimliği & ışık sahnesi işleniyor...';
+    progressBar.style.width = '58%';
+  });
+
+  schedule(1, 2550, () => {
+    submitBtn.classList.add('is-active');
+    progressBar.style.width = '74%';
+  });
+
+  schedule(2, 3400, () => {
+    applyStep2();
+  });
+
+  schedule(3, 5000, () => {
+    applyStep3();
+  });
+
+  return 5000;
+}
+
+/**
+ * Yeşil Nesil: Sol Gerçekçi Google Arama <-> Sağ Açılan Orijinal Site sahnesini kurar.
+ */
+function setupYesilNesilStage(leftEl, rightEl, instantComplete, schedule) {
+  const googleShell = createEl('div', 'sim-google-shell');
+
+  const googleTop = createEl('div', 'sim-google-top');
+  const googleLogo = createEl('div', 'sim-google-logo');
+  const logoLetters = [
+    ['G', '#4285F4'],
+    ['o', '#EA4335'],
+    ['o', '#FBBC05'],
+    ['g', '#4285F4'],
+    ['l', '#34A853'],
+    ['e', '#EA4335'],
+  ];
+  for (const [ch, color] of logoLetters) {
+    const span = createEl('span', 'sim-google-letter', ch);
+    span.style.color = color;
+    googleLogo.append(span);
+  }
+
+  const googleBar = createEl('div', 'sim-google-bar');
+  const searchIcon = createEl('span', 'sim-google-search-icon');
+  searchIcon.append(createSvgIcon(['M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z', 'M21 21l-4.35-4.35']));
+  const googleQuery = createEl('span', 'sim-google-query', "Google'da ara...");
+  googleBar.append(searchIcon, googleQuery);
+  googleTop.append(googleLogo, googleBar);
+
+  const googleResults = createEl('div', 'sim-google-results');
+
+  const primaryResult = createEl('div', 'sim-google-result');
+  const primaryUrl = createEl('span', 'sim-google-url', 'https://yesilnesilthegarden.com');
+  const primaryTitle = createEl(
+    'strong',
+    'sim-google-title',
+    'Yeşil Nesil The Garden · Kır Düğünü ve Davet Mekânı',
+  );
+  const primaryDesc = createEl(
+    'p',
+    'sim-google-desc',
+    'Doğayla iç içe 350 kişilik kır bahçesi, açık hava nikâh alanı ve hızlı keşif randevusu.',
+  );
+  const clickBadge = createEl('span', 'sim-google-click-badge', 'Sonuca tıklandı');
+  primaryResult.append(primaryUrl, primaryTitle, primaryDesc, clickBadge);
+
+  const secondaryResult = createEl('div', 'sim-google-result sim-google-result--muted');
+  secondaryResult.append(
+    createEl('span', 'sim-google-url', 'https://dugun-rehberi.example › kir-dugunu'),
+    createEl('strong', 'sim-google-title', 'İstanbul Kır Düğünü Mekânları Listesi'),
+    createEl(
+      'p',
+      'sim-google-desc',
+      'Komisyonlu listeleme portalları ve uzun teklif bekleme formları...',
+    ),
+  );
+
+  googleResults.append(primaryResult, secondaryResult);
+  googleShell.append(googleTop, googleResults);
+  leftEl.replaceChildren(googleShell);
+
+  const siteShell = createEl('div', 'sim-site-shell');
+  const siteBar = createEl('div', 'sim-site-bar');
+  const siteDots = createEl('div', 'sim-site-dots');
+  siteDots.append(
+    createEl('span', 'sim-site-dot'),
+    createEl('span', 'sim-site-dot'),
+    createEl('span', 'sim-site-dot'),
+  );
+  const siteAddress = createEl('div', 'sim-site-address');
+  siteAddress.append(
+    createSvgIcon(['M7 11V7a5 5 0 0 1 10 0v4', 'M5 11h14v10H5z']),
+    createEl('span', '', 'yesilnesilthegarden.com'),
+  );
+  const speedBadge = createEl('span', 'sim-speed-badge', "0.4 sn'de açıldı");
+  siteBar.append(siteDots, siteAddress, speedBadge);
+
+  const siteViewport = createEl('div', 'sim-site-viewport');
+  const sitePlaceholder = createEl(
+    'div',
+    'sim-site-placeholder',
+    'Google sonucuna tıklanması bekleniyor...',
+  );
+  const siteImg = createEl('img', 'sim-site-img');
+  siteImg.src = 'assets/img/yesilnesil-real.png';
+  siteImg.alt = 'Yeşil Nesil The Garden orijinal web sitesi ekran görüntüsü';
+  siteViewport.append(sitePlaceholder, siteImg);
+
+  siteShell.append(siteBar, siteViewport);
+  rightEl.replaceChildren(siteShell);
+
+  const applyStep0 = () => {
+    googleQuery.textContent = 'kır düğünü mekânları';
+    googleQuery.classList.add('is-typed');
+    googleResults.classList.add('is-visible');
+  };
+
+  const applyStep1 = () => {
+    primaryResult.classList.add('is-active');
+  };
+
+  const applyStep2 = () => {
+    sitePlaceholder.remove();
+    siteImg.classList.add('is-visible');
+    speedBadge.classList.add('is-active');
+  };
+
+  const applyStep3 = () => {
+    const banner = createEl(
+      'div',
+      'sim-ready-banner',
+      "0.4 sn'de açılan vitrin · Doğrudan keşif ve randevu talebi hazır",
+    );
+    siteShell.append(banner);
+  };
+
+  if (instantComplete) {
+    applyStep0();
+    applyStep1();
+    applyStep2();
+    applyStep3();
+    return 0;
+  }
+
+  schedule(0, 650, () => {
+    applyStep0();
+  });
+
+  schedule(1, 2000, () => {
+    applyStep1();
+  });
+
+  schedule(2, 3400, () => {
+    applyStep2();
+  });
+
+  schedule(3, 4900, () => {
+    applyStep3();
+  });
+
+  return 4900;
+}
+
+const STAGE_BUILDERS = {
+  salonzeka: setupSalonZekaStage,
+  vitrinos: setupVitrinOSStage,
+  yesilnesil: setupYesilNesilStage,
+};
+
+/**
+ * Sıfır tıklamalı Tam Otonom Çift Ekranlı Canlı Deneyim Motorunu başlatır.
  */
 export function initSimulator() {
   const root = document.querySelector('[data-simulator]');
@@ -157,10 +835,12 @@ export function initSimulator() {
   }
 
   const tabs = Array.from(root.querySelectorAll('[data-sim-tab]'));
-  const runButton = root.querySelector('[data-sim-run]');
+  const replayButton = root.querySelector('[data-sim-replay]');
   const stepElements = Array.from(root.querySelectorAll('[data-sim-step]'));
-  const logContainer = root.querySelector('[data-sim-log]');
+  const leftEl = root.querySelector('[data-sim-left]');
+  const rightEl = root.querySelector('[data-sim-right]');
   const summaryEl = root.querySelector('[data-sim-summary]');
+  const statusTextEl = root.querySelector('[data-sim-status-text]');
 
   let activeKey =
     tabs.find((tab) => tab.classList.contains('is-active') || tab.getAttribute('aria-selected') === 'true')
@@ -172,12 +852,27 @@ export function initSimulator() {
 
   let timers = [];
   let runToken = 0;
+  let isInView = typeof window.IntersectionObserver !== 'function';
 
   const clearTimers = () => {
     for (const id of timers) {
       window.clearTimeout(id);
     }
     timers = [];
+  };
+
+  const setActiveTimelineStep = (stepIndex) => {
+    stepElements.forEach((el, elIdx) => {
+      const isCurrent = elIdx === stepIndex;
+      const isPast = elIdx < stepIndex;
+      el.classList.toggle('is-active', isCurrent);
+      el.classList.toggle('is-done', isPast);
+      if (isCurrent) {
+        el.setAttribute('aria-current', 'step');
+      } else {
+        el.removeAttribute('aria-current');
+      }
+    });
   };
 
   const renderScenarioBase = (scenarioKey) => {
@@ -217,7 +912,8 @@ export function initSimulator() {
 
   const runSimulation = (scenarioKey) => {
     const scenario = SIMULATOR_SCENARIOS[scenarioKey];
-    if (!scenario) {
+    const buildStage = STAGE_BUILDERS[scenarioKey];
+    if (!scenario || !buildStage || !leftEl || !rightEl) {
       return;
     }
 
@@ -227,47 +923,39 @@ export function initSimulator() {
 
     renderScenarioBase(scenarioKey);
 
-    if (logContainer) {
-      logContainer.replaceChildren();
+    const paused = isMotionPaused();
+    if (statusTextEl) {
+      statusTextEl.textContent = paused ? 'DURAKLATILDI · TAM GÖRÜNÜM' : 'CANLI OTONOM AKIŞ';
     }
 
-    if (runButton) {
-      runButton.setAttribute('aria-busy', 'true');
+    if (paused) {
+      buildStage(leftEl, rightEl, true, () => {});
+      setActiveTimelineStep(scenario.steps.length - 1);
+      return;
     }
 
-    const delayMs = isMotionReduced() ? 0 : 420;
+    setActiveTimelineStep(0);
 
-    scenario.steps.forEach((step, idx) => {
-      const timerId = window.setTimeout(() => {
-        if (currentToken !== runToken) {
+    const schedule = (stepIdx, delayMs, fn) => {
+      const id = window.setTimeout(() => {
+        if (currentToken !== runToken || isMotionPaused()) {
           return;
         }
+        setActiveTimelineStep(stepIdx);
+        fn();
+      }, delayMs);
+      timers.push(id);
+    };
 
-        stepElements.forEach((el, elIdx) => {
-          const isCurrent = elIdx === idx;
-          const isPast = elIdx < idx;
-          el.classList.toggle('is-active', isCurrent);
-          el.classList.toggle('is-done', isPast);
-          if (isCurrent) {
-            el.setAttribute('aria-current', 'step');
-          } else {
-            el.removeAttribute('aria-current');
-          }
-        });
+    const lastStepAt = buildStage(leftEl, rightEl, false, schedule);
 
-        if (logContainer) {
-          appendLogEntry(logContainer, step);
-        }
-
-        if (idx === scenario.steps.length - 1) {
-          if (runButton) {
-            runButton.removeAttribute('aria-busy');
-          }
-        }
-      }, delayMs * idx);
-
-      timers.push(timerId);
-    });
+    const loopId = window.setTimeout(() => {
+      if (currentToken !== runToken || !isInView || isMotionPaused()) {
+        return;
+      }
+      runSimulation(activeKey);
+    }, lastStepAt + LOOP_RESTART_DELAY_MS);
+    timers.push(loopId);
   };
 
   for (const tab of tabs) {
@@ -281,12 +969,51 @@ export function initSimulator() {
     });
   }
 
-  if (runButton) {
-    runButton.addEventListener('click', () => {
+  if (replayButton) {
+    replayButton.addEventListener('click', () => {
       runSimulation(activeKey);
     });
   }
 
-  // İlk yüklemede varsayılan senaryoyu çalıştır
-  runSimulation(activeKey);
+  window.addEventListener('ma:motion-change', () => {
+    if (isMotionPaused()) {
+      runSimulation(activeKey);
+    } else if (isInView) {
+      runSimulation(activeKey);
+    }
+  });
+
+  if (typeof window.matchMedia === 'function') {
+    const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (typeof reducedQuery.addEventListener === 'function') {
+      reducedQuery.addEventListener('change', () => {
+        if (isMotionPaused() || isInView) {
+          runSimulation(activeKey);
+        }
+      });
+    }
+  }
+
+  if (typeof window.IntersectionObserver === 'function') {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.target !== root) {
+            continue;
+          }
+          if (entry.isIntersecting) {
+            isInView = true;
+            runSimulation(activeKey);
+          } else {
+            isInView = false;
+            clearTimers();
+          }
+        }
+      },
+      { threshold: 0.18 },
+    );
+    observer.observe(root);
+  } else {
+    runSimulation(activeKey);
+  }
 }

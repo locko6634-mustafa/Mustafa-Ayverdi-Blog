@@ -23,7 +23,7 @@
 ---
 
 ## 3. Klasör Yapısı ve Sözleşmeler
-- `index.html` — Ana tanıtım vitrini (Hero, 3'lü fayda bandı, görselli örnek iş kartları, `[data-simulator]`, Çözümler & S.S.S. akordiyonları, Tanışalım, Rehberler, CTA, Footer).
+- `index.html` — Ana tanıtım vitrini (Hero, 3'lü fayda bandı, görselli örnek iş kartları, `#simulator` — Otonom çift ekranlı canlı deneyim sahnesi, Çözümler & S.S.S. akordiyonları, Tanışalım, Rehberler, CTA, Footer).
 - `projeler/{salonzeka,vitrinos,yesil-nesil}.html` — 2'li görsel galerili (`.visual-showcase-grid`) ürün vitrin sayfaları.
 - `notlar/{index,...}.html` — İşletme sahiplerine yönelik jargonsuz 4 rehber yazısı.
 - `assets/img/` — Her proje için canlı ekran görüntüsü (`*-real.png`) ve gerçek arayüze sadık sahne görseli (`*-scene.jpg`).

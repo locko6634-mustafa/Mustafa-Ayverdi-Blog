@@ -164,24 +164,21 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
     }
   });
 
-  it('index.html simülatör kancaları (data-sim-step-* ve blok data-sim-log) sözleşmeye uymalı', () => {
+  it('index.html simülatör kancaları (data-simulator, çift ekran ve timeline) sözleşmeye uymalı', () => {
     const indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf8');
 
     assert.match(indexHtml, /\bdata-simulator\b/);
     for (const key of ['salonzeka', 'vitrinos', 'yesilnesil']) {
       assert.match(indexHtml, new RegExp(`\\bdata-sim-tab="${key}"`));
     }
+    assert.match(indexHtml, /\bdata-sim-left\b/);
+    assert.match(indexHtml, /\bdata-sim-right\b/);
+    assert.match(indexHtml, /\bdata-sim-replay\b/);
     for (let i = 0; i < 4; i += 1) {
       assert.match(indexHtml, new RegExp(`\\bdata-sim-step="${i}"`));
     }
     assert.match(indexHtml, /\bdata-sim-step-code\b/);
     assert.match(indexHtml, /\bdata-sim-step-title\b/);
-    assert.match(indexHtml, /\bdata-sim-step-desc\b/);
-    assert.match(
-      indexHtml,
-      /<div\b[^>]*\bdata-sim-log\b/i,
-      'data-sim-log geçerli bir <div> blok kapsayıcı üzerinde olmalı (<pre><code> içinde değil)',
-    );
   });
 
   it('HTML dosyalarında kullanılan tüm CSS sınıfları css/*.css içinde tanımlı olmalı', () => {
