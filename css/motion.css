@@ -1,0 +1,148 @@
+@layer motion {
+  @keyframes page-entry {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes stack-breathe {
+    0%,
+    100% {
+      transform: rotateX(14deg) rotateY(-12deg) translateY(0);
+    }
+    50% {
+      transform: rotateX(16deg) rotateY(-9deg) translateY(-6px);
+    }
+  }
+
+  @keyframes module-breathe {
+    0%,
+    100% {
+      transform: translateZ(12px);
+    }
+    50% {
+      transform: translateZ(20px);
+    }
+  }
+
+  @keyframes current {
+    from {
+      stroke-dashoffset: 36;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes signal-pulse {
+    0%,
+    100% {
+      opacity: 0.65;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+  }
+
+  main {
+    animation: page-entry var(--dur-slow) var(--ease) both;
+  }
+
+  .iso-stack {
+    animation: stack-breathe 7s var(--ease) infinite;
+  }
+
+  .iso-layer--mid,
+  .iso-layer-mid {
+    animation: module-breathe 5.5s var(--ease) infinite;
+  }
+
+  .iso-badge {
+    animation: signal-pulse 3.2s var(--ease) infinite;
+  }
+
+  .iso-flow-line,
+  .signal-flow,
+  .signal-path {
+    stroke-dasharray: 6 6;
+    animation: current 2.4s linear infinite;
+  }
+
+  /* Scroll Reveal */
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity var(--dur-slow) var(--ease),
+      transform var(--dur-slow) var(--ease);
+  }
+
+  [data-reveal].is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Kullanıcı Hareketi Duraklattığında */
+  html[data-motion="paused"] *,
+  html[data-motion="paused"] *::before,
+  html[data-motion="paused"] *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html[data-motion="paused"] [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Sistem Hareket Azaltma Tercihi */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+
+    [data-reveal] {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@layer utilities {
+  .text-muted {
+    color: var(--muted);
+  }
+
+  .text-clay {
+    color: var(--clay);
+  }
+
+  .mt-sm {
+    margin-top: 0.75rem;
+  }
+
+  .mt-md {
+    margin-top: 1.5rem;
+  }
+
+  .mt-lg {
+    margin-top: 2.5rem;
+  }
+}
