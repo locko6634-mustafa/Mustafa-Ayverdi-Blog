@@ -852,6 +852,19 @@ const STAGE_BUILDERS = {
 };
 
 /**
+ * Yalnız SIMULATOR_SCENARIOS'un kendi anahtarlarını kabul eder; `constructor`, `toString`
+ * gibi prototip anahtarları ve string olmayan değerler null döner.
+ * @param {unknown} key
+ */
+export function getScenario(key) {
+  return typeof key === 'string' && Object.hasOwn(SIMULATOR_SCENARIOS, key) ? SIMULATOR_SCENARIOS[key] : null;
+}
+
+function getStageBuilder(key) {
+  return typeof key === 'string' && Object.hasOwn(STAGE_BUILDERS, key) ? STAGE_BUILDERS[key] : null;
+}
+
+/**
  * Sıfır tıklamalı Tam Otonom Çift Ekranlı Canlı Deneyim Motorunu başlatır.
  */
 export function initSimulator() {
@@ -900,7 +913,7 @@ export function initSimulator() {
     tabs.find((tab) => tab.classList.contains('is-active') || tab.getAttribute('aria-selected') === 'true')
       ?.getAttribute('data-sim-tab') || 'salonzeka';
 
-  if (!SIMULATOR_SCENARIOS[activeKey]) {
+  if (!getScenario(activeKey)) {
     activeKey = 'salonzeka';
   }
 
@@ -949,7 +962,7 @@ export function initSimulator() {
   };
 
   const renderScenarioBase = (scenarioKey) => {
-    const scenario = SIMULATOR_SCENARIOS[scenarioKey];
+    const scenario = getScenario(scenarioKey);
     if (!scenario) {
       return;
     }
@@ -988,8 +1001,8 @@ export function initSimulator() {
   };
 
   const runSimulation = (scenarioKey) => {
-    const scenario = SIMULATOR_SCENARIOS[scenarioKey];
-    const buildStage = STAGE_BUILDERS[scenarioKey];
+    const scenario = getScenario(scenarioKey);
+    const buildStage = getStageBuilder(scenarioKey);
     if (!scenario || !buildStage || !leftEl || !rightEl) {
       return;
     }
@@ -1042,7 +1055,7 @@ export function initSimulator() {
 
   const activateTab = (tab) => {
     const nextKey = tab.getAttribute('data-sim-tab');
-    if (!nextKey || !SIMULATOR_SCENARIOS[nextKey]) {
+    if (!nextKey || !getScenario(nextKey)) {
       return;
     }
     activeKey = nextKey;

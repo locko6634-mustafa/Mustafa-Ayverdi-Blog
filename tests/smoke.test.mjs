@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { SIMULATOR_SCENARIOS } from '../js/simulator.js';
+import { SIMULATOR_SCENARIOS, getScenario } from '../js/simulator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -113,20 +113,119 @@ function findBlankTargetViolations(html) {
 }
 
 /**
- * HTML içindeki href/src nitelik değerlerini (tüm tırnak biçimleriyle) döndürür.
+ * srcset değerindeki aday URL'leri döndürür (HTML srcset ayrıştırma kuralına yakın:
+ * URL boşluğa kadar okunur, sondaki virgüller atılır, tanımlayıcılar virgüle kadar atlanır).
+ * @param {string} value
+ * @returns {string[]}
+ */
+function parseSrcset(value) {
+  const urls = [];
+  let i = 0;
+  while (i < value.length) {
+    while (i < value.length && /[\s,]/.test(value[i])) i += 1;
+    if (i >= value.length) break;
+    const start = i;
+    while (i < value.length && !/\s/.test(value[i])) i += 1;
+    let url = value.slice(start, i);
+    if (url.endsWith(',')) {
+      url = url.replace(/,+$/, '');
+    } else {
+      let depth = 0;
+      while (i < value.length) {
+        const c = value[i];
+        if (c === '(') depth += 1;
+        else if (c === ')') depth = Math.max(0, depth - 1);
+        else if (c === ',' && depth === 0) break;
+        i += 1;
+      }
+    }
+    if (url) urls.push(url);
+  }
+  return urls;
+}
+
+/**
+ * HTML içindeki href/src/poster nitelik değerlerini ve srcset adaylarını (tüm tırnak biçimleriyle) döndürür.
  * @param {string} html
  * @returns {string[]}
  */
 function collectLinkValues(html) {
   const values = [];
   for (const { attrs } of findTags(html)) {
-    for (const attr of ['href', 'src']) {
+    for (const attr of ['href', 'src', 'poster']) {
       if (attrs.has(attr)) {
         values.push(attrs.get(attr));
       }
     }
+    if (attrs.has('srcset')) {
+      values.push(...parseSrcset(attrs.get('srcset')));
+    }
   }
   return values;
+}
+
+/**
+ * CSS içindeki url(...) ve @import "..." yollarını (yorumlar hariç) döndürür.
+ * @param {string} css
+ * @returns {string[]}
+ */
+function collectCssUrls(css) {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const values = [];
+  for (const m of stripped.matchAll(/\burl\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s]*))\s*\)/gi)) {
+    values.push(m[1] ?? m[2] ?? m[3] ?? '');
+  }
+  for (const m of stripped.matchAll(/@import\s+(?:"([^"]*)"|'([^']*)')/gi)) {
+    values.push(m[1] ?? m[2]);
+  }
+  return values;
+}
+
+/**
+ * Yerel bir referansı dosya yoluna çözer; harici/#/mailto/data: vb. ve boş yollar için null döner.
+ * @param {string} value
+ * @param {string} baseDir
+ * @returns {string | null}
+ */
+function resolveLocalRef(value, baseDir) {
+  const rawUrl = value.trim();
+  if (isExternalOrHash(rawUrl)) {
+    return null;
+  }
+  const cleanUrl = rawUrl.split('#')[0].split('?')[0];
+  if (!cleanUrl) {
+    return null;
+  }
+  return cleanUrl.startsWith('/') ? path.join(ROOT_DIR, cleanUrl.slice(1)) : path.resolve(baseDir, cleanUrl);
+}
+
+/** Yasaklı JS kalıpları (tüm js/ dosyalarına uygulanır). */
+const FORBIDDEN_JS_PATTERNS = [
+  { name: 'innerHTML', regex: /\.innerHTML\b|\[\s*['"`]innerHTML['"`]\s*\]/ },
+  { name: 'outerHTML', regex: /\.outerHTML\b|\[\s*['"`]outerHTML['"`]\s*\]/ },
+  {
+    name: 'insertAdjacentHTML',
+    regex: /\.insertAdjacentHTML\b|\[\s*['"`]insertAdjacentHTML['"`]\s*\]/,
+  },
+  {
+    name: 'köşeli parantezde string birleştirmeli üye erişimi (ör. el[\'inner\'+\'HTML\'])',
+    regex: /\[\s*['"`][^'"`\]]*['"`]\s*\+/,
+  },
+  { name: 'document.write', regex: /document\.write\b|\[\s*['"`]write(?:ln)?['"`]\s*\]/ },
+  // eval( , (0, eval)(x), window.eval(x), window['eval'](x)
+  { name: 'eval', regex: /(?<![\w$])eval\b|\[\s*['"`]eval['"`]\s*\]/ },
+  // new Function(..), Function(..)(), window['Function'](..)
+  { name: 'Function()', regex: /(?<![\w$.])Function\s*\(|\[\s*['"`]Function['"`]\s*\]/ },
+  {
+    name: 'string argümanlı setTimeout/setInterval',
+    regex: /\bset(?:Timeout|Interval)\s*\(\s*['"`]/,
+  },
+  { name: 'javascript: URL', regex: /javascript\s*:/i },
+];
+
+/** @param {string} source @returns {string[]} eşleşen yasaklı kalıp adları */
+function findForbiddenJs(source) {
+  return FORBIDDEN_JS_PATTERNS.filter(({ regex }) => regex.test(source)).map(({ name }) => name);
 }
 
 // --- CSP politika denetimi ---
@@ -167,10 +266,15 @@ function analyzeCsp(policy) {
     }
   }
   const forbiddenKeywords = new Set(["'unsafe-inline'", "'unsafe-eval'", "'unsafe-hashes'"]);
+  // Site sıfır harici bağımlılıklı: tüm getirme direktiflerinde yalnız 'self' / 'none' kabul edilir.
+  const fetchDirective = /-src(?:-elem|-attr)?$/;
+  const allowedFetchSources = new Set(["'self'", "'none'"]);
   for (const [name, values] of directives) {
     for (const raw of values) {
       const value = raw.toLowerCase();
-      if (forbiddenKeywords.has(value)) {
+      if (fetchDirective.test(name) && !allowedFetchSources.has(value)) {
+        problems.push(`${name} içinde izin verilmeyen kaynak (yalnız 'self'/'none'): ${raw}`);
+      } else if (forbiddenKeywords.has(value)) {
         problems.push(`${name} içinde ${raw}`);
       } else if (value.includes('*')) {
         problems.push(`${name} içinde joker (*) kaynak: ${raw}`);
@@ -225,6 +329,59 @@ describe('Test Yardımcıları (sentetik negatif kontroller)', () => {
       collectLinkValues(`<link href="a.css"><img src='b.png'><script src=c.js></script><a href=#top>t</a>`),
       ['a.css', 'b.png', 'c.js', '#top'],
     );
+    assert.deepEqual(
+      collectLinkValues(
+        `<img src="a.png" srcset="a-1x.png 1x, a-2x.png 2x,a-3x.png 3x"><video poster='p.jpg'></video>` +
+          `<source srcset=s.webp>`,
+      ),
+      ['a.png', 'a-1x.png', 'a-2x.png', 'a-3x.png', 'p.jpg', 's.webp'],
+    );
+    assert.deepEqual(parseSrcset('x.png 100w, y.png 200w'), ['x.png', 'y.png']);
+    assert.deepEqual(
+      collectCssUrls(
+        `@import url("./a.css"); @import 'b.css'; /* url(yorum.png) */ .x { background: url(img/c.png) } ` +
+          `.y { mask: url( 'd.svg#m' ) } .z { background: url(data:image/png;base64,AA) }`,
+      ),
+      ['./a.css', 'img/c.png', 'd.svg#m', 'data:image/png;base64,AA', 'b.css'],
+    );
+    assert.equal(resolveLocalRef('data:image/png;base64,AA', ROOT_DIR), null);
+    assert.equal(resolveLocalRef('https://x/y.png', ROOT_DIR), null);
+    assert.equal(resolveLocalRef('img/c.png?v=1#a', '/k'), path.resolve('/k', 'img/c.png'));
+  });
+
+  it('yasaklı JS kalıpları dolaylı eval/Function/innerHTML biçimlerini de yakalamalı', () => {
+    const mustFail = [
+      `el.innerHTML = x;`,
+      `el['innerHTML'] = x;`,
+      `el['inner' + 'HTML'] = x;`,
+      `el["inner"+"HTML"] = x;`,
+      `eval(x);`,
+      `(0, eval)(x);`,
+      `window.eval(x);`,
+      `window['eval'](x);`,
+      `new Function('return 1')();`,
+      `Function('return 1')();`,
+      `window['Function']('x')();`,
+      `setTimeout('alert(1)', 10);`,
+      `document.write(x);`,
+      `document['write'](x);`,
+      `location.href = 'javascript:void(0)';`,
+    ];
+    for (const sample of mustFail) {
+      assert.ok(findForbiddenJs(sample).length > 0, `Yasaklı kalıp yakalanmadı: ${sample}`);
+    }
+
+    const mustPass = [
+      `el.textContent = x;`,
+      `const evaluate = (v) => v; evaluate(1);`,
+      `myFunction(1); obj.Function = 1;`,
+      `cellMap['14:00'][2];`,
+      `setTimeout(() => {}, 10);`,
+      `typeof fn === 'function';`,
+    ];
+    for (const sample of mustPass) {
+      assert.deepEqual(findForbiddenJs(sample), [], `Yanlış pozitif: ${sample}`);
+    }
   });
 
   it('CSP analizcisi zayıf politikaları reddetmeli, güçlü politikayı kabul etmeli', () => {
@@ -246,6 +403,12 @@ describe('Test Yardımcıları (sentetik negatif kontroller)', () => {
       strong.replace("base-uri 'self'", 'base-uri *'),
       strong.replace("form-action 'none'", "form-action 'self'"),
       strong.replace("default-src 'self'", "default-src 'self' https:"),
+      strong.replace("img-src 'self'", 'img-src https:'),
+      `${strong}; connect-src https://evil.example`,
+      `${strong}; script-src-elem https://evil.example`,
+      `${strong}; style-src-attr 'self' https://cdn.example`,
+      `${strong}; font-src 'self' data:`,
+      `${strong}; frame-src evil.example`,
     ];
     for (const policy of weakVariants) {
       assert.ok(analyzeCsp(policy).length > 0, `Zayıf CSP kabul edildi: ${policy}`);
@@ -275,27 +438,10 @@ describe('JS Modülleri ve Güvenlik Sözleşmesi', () => {
     const jsFiles = walkFiles(path.join(ROOT_DIR, 'js'), '.js');
     assert.ok(jsFiles.length >= 7, 'JS dosyaları bulunamadı');
 
-    const forbiddenPatterns = [
-      { name: 'innerHTML', regex: /\.innerHTML\b|\[\s*['"`]innerHTML['"`]\s*\]/ },
-      { name: 'outerHTML', regex: /\.outerHTML\b|\[\s*['"`]outerHTML['"`]\s*\]/ },
-      {
-        name: 'insertAdjacentHTML',
-        regex: /\.insertAdjacentHTML\b|\[\s*['"`]insertAdjacentHTML['"`]\s*\]/,
-      },
-      { name: 'document.write', regex: /document\.write\b/ },
-      { name: 'eval()', regex: /\beval\s*\(/ },
-      { name: 'new Function()', regex: /\bnew\s+Function\s*\(/ },
-      {
-        name: 'string argümanlı setTimeout/setInterval',
-        regex: /\bset(?:Timeout|Interval)\s*\(\s*['"`]/,
-      },
-      { name: 'javascript: URL', regex: /javascript\s*:/i },
-    ];
-
     for (const file of jsFiles) {
       const content = fs.readFileSync(file, 'utf8');
       const rel = path.relative(ROOT_DIR, file);
-      for (const { name, regex } of forbiddenPatterns) {
+      for (const { name, regex } of FORBIDDEN_JS_PATTERNS) {
         assert.equal(regex.test(content), false, `${rel} içinde yasaklı ${name} tespit edildi`);
       }
     }
@@ -329,6 +475,66 @@ describe('Simülatör Veri Bütünlüğü', () => {
   });
 });
 
+describe('Simülatör Anahtar Sertleştirmesi (prototip anahtarları)', () => {
+  it('getScenario yalnız kendi senaryo anahtarlarını kabul etmeli', () => {
+    for (const key of Object.keys(SIMULATOR_SCENARIOS)) {
+      assert.equal(getScenario(key), SIMULATOR_SCENARIOS[key]);
+    }
+    for (const key of ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'valueOf', '', undefined, null, 1]) {
+      assert.equal(getScenario(key), null, `Prototip/geçersiz anahtar kabul edildi: ${String(key)}`);
+    }
+  });
+
+  it('initSimulator prototip anahtarlı sekmede TypeError fırlatmamalı ve geçerli senaryoya düşmeli', async () => {
+    const tabs = ['constructor', 'salonzeka', 'toString'].map(
+      (key) => new FakeElement({ 'data-sim-tab': key }),
+    );
+    tabs[0].classList.add('is-active');
+    const step = new FakeElement({ 'data-sim-step': '0' });
+    const left = new FakeElement({ 'data-sim-left': '' });
+    const right = new FakeElement({ 'data-sim-right': '' });
+    const root = new FakeElement({ 'data-simulator': '' });
+    root.querySelectorAll = (sel) => {
+      if (sel === '[data-sim-tab]') return tabs;
+      if (sel === '[data-sim-step]') return [step];
+      return [];
+    };
+    root.querySelector = (sel) => ({ '[data-sim-left]': left, '[data-sim-right]': right })[sel] ?? null;
+
+    const documentStub = {
+      querySelector: (sel) => (sel === '[data-simulator]' ? root : null),
+      getElementById: () => null,
+    };
+    // IntersectionObserver geri çağrısı tetiklenmez: sahne kurulumu çalışmaz, yalnız anahtar mantığı test edilir.
+    class FakeObserver {
+      observe() {}
+      disconnect() {}
+    }
+    const windowStub = { addEventListener() {}, removeEventListener() {}, IntersectionObserver: FakeObserver };
+    const restoreGlobals = installGlobals({ document: documentStub, window: windowStub });
+    const previousObserver = Object.getOwnPropertyDescriptor(globalThis, 'IntersectionObserver');
+    Object.defineProperty(globalThis, 'IntersectionObserver', { value: FakeObserver, configurable: true, writable: true });
+    const restore = () => {
+      if (previousObserver) {
+        Object.defineProperty(globalThis, 'IntersectionObserver', previousObserver);
+      } else {
+        delete globalThis.IntersectionObserver;
+      }
+      restoreGlobals();
+    };
+    try {
+      const { initSimulator } = await importJs('simulator.js');
+      assert.doesNotThrow(() => initSimulator());
+      assert.equal(tabs[1].getAttribute('tabindex'), '0', 'geçersiz aktif anahtarda salonzeka seçilmeli');
+      assert.equal(tabs[0].getAttribute('tabindex'), '-1');
+      assert.doesNotThrow(() => tabs[0].dispatch('click'));
+      assert.doesNotThrow(() => tabs[2].dispatch('click'));
+    } finally {
+      restore();
+    }
+  });
+});
+
 describe('HTML Sözleşme ve Link Kontrolleri', () => {
   it('tüm HTML dosyalarındaki yerel CSS/JS/sayfa linkleri geçerli dosyalara işaret etmeli', () => {
     const htmlFiles = walkFiles(ROOT_DIR, '.html');
@@ -340,26 +546,38 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
       const relHtml = path.relative(ROOT_DIR, htmlFile);
 
       for (const value of collectLinkValues(content)) {
-        const rawUrl = value.trim();
-        if (isExternalOrHash(rawUrl)) {
+        const resolved = resolveLocalRef(value, dir);
+        if (!resolved) {
           continue;
         }
-
-        const cleanUrl = rawUrl.split('#')[0].split('?')[0];
-        if (!cleanUrl) {
-          continue;
-        }
-
-        const resolved = cleanUrl.startsWith('/')
-          ? path.join(ROOT_DIR, cleanUrl.slice(1))
-          : path.resolve(dir, cleanUrl);
-
         assert.ok(
           fs.existsSync(resolved),
-          `${relHtml} içinde kırık yerel yol: "${rawUrl}" -> ${path.relative(ROOT_DIR, resolved)}`,
+          `${relHtml} içinde kırık yerel yol: "${value.trim()}" -> ${path.relative(ROOT_DIR, resolved)}`,
         );
       }
     }
+  });
+
+  it('css/*.css içindeki yerel url(...) ve @import yolları geçerli dosyalara işaret etmeli', () => {
+    const cssFiles = walkFiles(path.join(ROOT_DIR, 'css'), '.css');
+    assert.ok(cssFiles.length > 0, 'CSS dosyaları bulunamadı');
+
+    let checked = 0;
+    for (const cssFile of cssFiles) {
+      const relCss = path.relative(ROOT_DIR, cssFile);
+      for (const value of collectCssUrls(fs.readFileSync(cssFile, 'utf8'))) {
+        const resolved = resolveLocalRef(value, path.dirname(cssFile));
+        if (!resolved) {
+          continue;
+        }
+        checked += 1;
+        assert.ok(
+          fs.existsSync(resolved),
+          `${relCss} içinde kırık yerel yol: "${value.trim()}" -> ${path.relative(ROOT_DIR, resolved)}`,
+        );
+      }
+    }
+    assert.ok(checked > 0, 'CSS içinde denetlenecek yerel url()/@import bulunamadı');
   });
 
   it('target="_blank" kullanılan tüm <a>/<area>/<form> etiketlerinde rel="noopener noreferrer" bulunmalı; <base target="_blank"> yasak', () => {
@@ -410,20 +628,27 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
     }
 
     const htmlFiles = walkFiles(ROOT_DIR, '.html');
-    const htmlClassAttrRegex = /\bclass\s*=\s*"([^"]+)"/g;
     const missing = new Set();
+    let inspectedClasses = 0;
 
     for (const htmlFile of htmlFiles) {
       const html = fs.readFileSync(htmlFile, 'utf8');
       const relHtml = path.relative(ROOT_DIR, htmlFile);
-      for (const match of html.matchAll(htmlClassAttrRegex)) {
-        for (const cls of match[1].trim().split(/\s+/)) {
-          if (cls && !definedClasses.has(cls)) {
+      // parseAttributes çift/tek/tırnaksız class değerlerini okur; data-class gibi nitelikler ayrı addır.
+      for (const { attrs } of findTags(html)) {
+        for (const cls of (attrs.get('class') ?? '').trim().split(/\s+/)) {
+          if (!cls) {
+            continue;
+          }
+          inspectedClasses += 1;
+          if (!definedClasses.has(cls)) {
             missing.add(`${relHtml}: .${cls}`);
           }
         }
       }
     }
+
+    assert.ok(inspectedClasses > 0, 'HTML dosyalarında incelenecek class değeri bulunamadı');
 
     assert.deepEqual(
       Array.from(missing),

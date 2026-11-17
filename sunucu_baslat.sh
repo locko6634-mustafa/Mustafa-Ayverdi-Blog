@@ -154,6 +154,29 @@ for _ in $(seq 1 25); do
     sleep 0.2
 done
 
+# Portu dinleyen süreçlerin PID'leri (ss veya lsof varsa; göremezse boş döner)
+listener_pids() {
+    if command -v ss >/dev/null 2>&1; then
+        ss -ltnpH "( sport = :${PORT} )" 2>/dev/null | grep -o 'pid=[0-9]*' | cut -d= -f2 | sort -u || true
+    elif command -v lsof >/dev/null 2>&1; then
+        lsof -nP -t -iTCP:"${PORT}" -sTCP:LISTEN 2>/dev/null | sort -u || true
+    fi
+}
+
+# Port dinleniyor görünse de python bind'de düşmüş olabilir (port başka sürece ait):
+# kısa bekleyip PID'in hâlâ yaşadığını ve görülebiliyorsa portu dinleyenin bu PID olduğunu doğrula.
+if [ "$ready" = "1" ]; then
+    sleep 0.5
+    if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+        ready=0
+    else
+        pids="$(listener_pids)"
+        if [ -n "$pids" ] && ! grep -qx "$SERVER_PID" <<<"$pids"; then
+            ready=0
+        fi
+    fi
+fi
+
 if [ "$ready" != "1" ] || ! kill -0 "$SERVER_PID" 2>/dev/null; then
     kill "$SERVER_PID" 2>/dev/null || true
     echo -e "${RED}Hata: Sunucu başlatılamadı (port ${PORT} başka bir süreç tarafından alınmış olabilir).${NC}" >&2
