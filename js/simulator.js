@@ -122,6 +122,8 @@ export const SIMULATOR_SCENARIOS = {
 };
 
 const LOOP_RESTART_DELAY_MS = 4000;
+// buildStage geçerli bir son adım zamanı döndürmezse kullanılan güvenli varsayılan.
+const DEFAULT_LAST_STEP_AT_MS = 8000;
 
 function isMotionPaused() {
   const prefersReduced =
@@ -1011,7 +1013,19 @@ export function initSimulator() {
     runToken += 1;
     const currentToken = runToken;
 
-    renderScenarioBase(scenarioKey);
+    // Senkron kurulum hatası yarım zamanlayıcı/durum bırakmasın: kuyruğu boşalt, token'ı geçersiz kıl.
+    const abortRun = (phase, error) => {
+      console.error(`[simulator] "${scenarioKey}" ${phase} kurulamadı:`, error);
+      runToken += 1;
+      clearTimers();
+    };
+
+    try {
+      renderScenarioBase(scenarioKey);
+    } catch (error) {
+      abortRun('temel görünüm', error);
+      return;
+    }
 
     const paused = isMotionPaused();
     if (statusTextEl) {
@@ -1019,8 +1033,12 @@ export function initSimulator() {
     }
 
     if (paused) {
-      buildStage(leftEl, rightEl, true, () => {});
-      setActiveTimelineStep(scenario.steps.length - 1);
+      try {
+        buildStage(leftEl, rightEl, true, () => {});
+        setActiveTimelineStep(scenario.steps.length - 1);
+      } catch (error) {
+        abortRun('statik sahne', error);
+      }
       return;
     }
 
@@ -1042,7 +1060,17 @@ export function initSimulator() {
       timers.push(id);
     };
 
-    const lastStepAt = buildStage(leftEl, rightEl, false, schedule);
+    let lastStepAt;
+    try {
+      lastStepAt = buildStage(leftEl, rightEl, false, schedule);
+    } catch (error) {
+      abortRun('canlı sahne', error);
+      return;
+    }
+    // Sayı döndürmeyen builder anında tekrar eden döngü yaratmasın.
+    if (!Number.isFinite(lastStepAt) || lastStepAt < 0) {
+      lastStepAt = DEFAULT_LAST_STEP_AT_MS;
+    }
 
     const loopId = window.setTimeout(() => {
       if (currentToken !== runToken || !isInView || isMotionPaused()) {
@@ -1097,8 +1125,9 @@ export function initSimulator() {
     });
   }
 
+  // Ekran dışındayken yeniden kurulum yapılmaz; görünüme girişte IntersectionObserver kurar.
   listen(window, 'ma:motion-change', () => {
-    if (isMotionPaused() || isInView) {
+    if (isInView) {
       runSimulation(activeKey);
     }
   });
@@ -1106,7 +1135,7 @@ export function initSimulator() {
   if (typeof window.matchMedia === 'function') {
     const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handleReducedChange = () => {
-      if (isMotionPaused() || isInView) {
+      if (isInView) {
         runSimulation(activeKey);
       }
     };

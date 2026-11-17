@@ -9,6 +9,7 @@ import { SIMULATOR_SCENARIOS, getScenario } from '../js/simulator.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
+const SITE_ORIGIN = 'https://mustafaayverdi.dev';
 
 function walkFiles(dir, extFilter, acc = []) {
   if (!fs.existsSync(dir)) {
@@ -199,6 +200,55 @@ function resolveLocalRef(value, baseDir) {
   return cleanUrl.startsWith('/') ? path.join(ROOT_DIR, cleanUrl.slice(1)) : path.resolve(baseDir, cleanUrl);
 }
 
+/**
+ * CSS içinde tanımlı sınıf adlarını döndürür. Yorumlar ve string literal içerikleri
+ * ('...' / "...") önce temizlenir; böylece content: ".x" veya url("./a.css") sahte sınıf üretmez.
+ * @param {string} css
+ * @returns {Set<string>}
+ */
+function collectCssClasses(css) {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\/|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (m) =>
+    m.startsWith('/') ? '' : '""',
+  );
+  const classes = new Set();
+  for (const match of stripped.matchAll(/(?:^|[^0-9a-zA-Z_-])\.([a-zA-Z_][a-zA-Z0-9_-]*)/g)) {
+    classes.add(match[1]);
+  }
+  return classes;
+}
+
+/**
+ * sitemap.xml içindeki <url> girdilerini { loc, lastmod } olarak döndürür.
+ * @param {string} xml
+ * @returns {{ loc: string | null, lastmod: string | null, locCount: number }[]}
+ */
+function parseSitemap(xml) {
+  return Array.from(xml.matchAll(/<url>([\s\S]*?)<\/url>/g), ([, body]) => {
+    const locs = Array.from(body.matchAll(/<loc>\s*([^<]*?)\s*<\/loc>/g), (m) => m[1]);
+    return {
+      loc: locs[0] ?? null,
+      locCount: locs.length,
+      lastmod: body.match(/<lastmod>\s*([^<]*?)\s*<\/lastmod>/)?.[1] ?? null,
+    };
+  });
+}
+
+/**
+ * Site URL'sini yerel HTML dosya yoluna çözer ('/' ile biten → index.html); ORIGIN dışıysa null.
+ * @param {string} url
+ * @returns {string | null}
+ */
+function siteUrlToLocalFile(url) {
+  if (!url.startsWith(`${SITE_ORIGIN}/`)) {
+    return null;
+  }
+  let rel = url.slice(SITE_ORIGIN.length + 1);
+  if (rel === '' || rel.endsWith('/')) {
+    rel += 'index.html';
+  }
+  return path.join(ROOT_DIR, rel);
+}
+
 /** Yasaklı JS kalıpları (tüm js/ dosyalarına uygulanır). */
 const FORBIDDEN_JS_PATTERNS = [
   { name: 'innerHTML', regex: /\.innerHTML\b|\[\s*['"`]innerHTML['"`]\s*\]/ },
@@ -347,6 +397,18 @@ describe('Test Yardımcıları (sentetik negatif kontroller)', () => {
     assert.equal(resolveLocalRef('data:image/png;base64,AA', ROOT_DIR), null);
     assert.equal(resolveLocalRef('https://x/y.png', ROOT_DIR), null);
     assert.equal(resolveLocalRef('img/c.png?v=1#a', '/k'), path.resolve('/k', 'img/c.png'));
+    assert.deepEqual(
+      Array.from(
+        collectCssClasses(
+          `@import url("./tokens.css"); .a { } .b::after { content: ".sahte"; } /* .yorum */ ` +
+            `.c[data-x='.tek'] { background: url('img/x.png') } .d{content:"a\\".kacis"}`,
+        ),
+      ),
+      ['a', 'b', 'c', 'd'],
+    );
+    assert.equal(siteUrlToLocalFile(`${SITE_ORIGIN}/`), path.join(ROOT_DIR, 'index.html'));
+    assert.equal(siteUrlToLocalFile(`${SITE_ORIGIN}/notlar/`), path.join(ROOT_DIR, 'notlar', 'index.html'));
+    assert.equal(siteUrlToLocalFile('https://baska.example/x.html'), null);
   });
 
   it('yasaklı JS kalıpları dolaylı eval/Function/innerHTML biçimlerini de yakalamalı', () => {
@@ -554,6 +616,12 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
           fs.existsSync(resolved),
           `${relHtml} içinde kırık yerel yol: "${value.trim()}" -> ${path.relative(ROOT_DIR, resolved)}`,
         );
+        if (fs.statSync(resolved).isDirectory()) {
+          assert.ok(
+            fs.existsSync(path.join(resolved, 'index.html')),
+            `${relHtml} içinde index.html içermeyen dizine link: "${value.trim()}" -> ${path.relative(ROOT_DIR, resolved)}`,
+          );
+        }
       }
     }
   });
@@ -618,12 +686,9 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
     assert.ok(cssFiles.length > 0, 'CSS dosyaları bulunamadı');
 
     const definedClasses = new Set();
-    const cssClassRegex = /(?:^|[^0-9a-zA-Z_-])\.([a-zA-Z_][a-zA-Z0-9_-]*)/g;
-
     for (const cssFile of cssFiles) {
-      const css = fs.readFileSync(cssFile, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-      for (const match of css.matchAll(cssClassRegex)) {
-        definedClasses.add(match[1]);
+      for (const cls of collectCssClasses(fs.readFileSync(cssFile, 'utf8'))) {
+        definedClasses.add(cls);
       }
     }
 
@@ -1040,6 +1105,67 @@ describe('HTML Güvenlik Başlıkları (meta)', () => {
     }
 
     assert.deepEqual(problems, [], `Paylaşım/favicon sorunları:\n${problems.join('\n')}`);
+  });
+});
+
+describe('SEO: sitemap.xml ve robots.txt', () => {
+  // Sabit sayfa sayısı yerine sitemap ile iki yönlü küme eşitliği aranır: walkFiles sayfa kaçırırsa
+  // da, yeni sayfa sitemap'e eklenmezse de test düşer; yeni not eklemek sabit güncellemesi gerektirmez.
+  it('sitemap.xml yayınlanan tüm HTML sayfalarını canonical ile birebir ve geçerli lastmod ile listelemeli', () => {
+    const entries = parseSitemap(fs.readFileSync(path.join(ROOT_DIR, 'sitemap.xml'), 'utf8'));
+    assert.ok(entries.length > 0, 'sitemap.xml içinde <url> girdisi bulunamadı');
+
+    const problems = [];
+    const fileToLoc = new Map();
+    for (const { loc, locCount, lastmod } of entries) {
+      if (locCount !== 1 || !loc) {
+        problems.push(`<url> girdisinde tam 1 <loc> olmalı (bulunan: ${locCount})`);
+        continue;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(lastmod ?? '') || Number.isNaN(Date.parse(`${lastmod}T00:00:00Z`))) {
+        problems.push(`${loc}: lastmod YYYY-MM-DD olmalı (bulunan: ${lastmod})`);
+      }
+      const local = siteUrlToLocalFile(loc);
+      if (!local) {
+        problems.push(`${loc}: ${SITE_ORIGIN}/ ile başlamalı`);
+        continue;
+      }
+      if (!local.endsWith('.html') || !fs.existsSync(local)) {
+        problems.push(`${loc}: yerel HTML dosyasına çözülmüyor (${path.relative(ROOT_DIR, local)})`);
+        continue;
+      }
+      const rel = path.relative(ROOT_DIR, local);
+      if (fileToLoc.has(rel)) {
+        problems.push(`${rel}: sitemap'te birden fazla kez listelenmiş`);
+      }
+      fileToLoc.set(rel, loc);
+    }
+
+    const htmlPages = walkFiles(ROOT_DIR, '.html').map((file) => path.relative(ROOT_DIR, file));
+    for (const rel of htmlPages) {
+      const loc = fileToLoc.get(rel);
+      if (!loc) {
+        problems.push(`${rel}: sitemap.xml içinde yok`);
+        continue;
+      }
+      const head = fs.readFileSync(path.join(ROOT_DIR, rel), 'utf8').match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+      const canonical = findTags(head, ['link']).find(({ attrs }) => attrs.get('rel') === 'canonical')?.attrs.get('href');
+      if (canonical !== loc) {
+        problems.push(`${rel}: canonical (${canonical}) sitemap loc (${loc}) ile aynı olmalı`);
+      }
+    }
+    assert.equal(htmlPages.length, fileToLoc.size, 'HTML sayfa sayısı sitemap girdi sayısıyla eşleşmeli');
+
+    assert.deepEqual(problems, [], `sitemap.xml sorunları:\n${problems.join('\n')}`);
+  });
+
+  it('robots.txt Sitemap satırı sitenin sitemap.xml adresini göstermeli', () => {
+    const robots = fs.readFileSync(path.join(ROOT_DIR, 'robots.txt'), 'utf8');
+    const sitemapLines = robots
+      .split(/\r?\n/)
+      .filter((line) => /^\s*sitemap\s*:/i.test(line))
+      .map((line) => line.replace(/^\s*sitemap\s*:\s*/i, '').trim());
+    assert.deepEqual(sitemapLines, [`${SITE_ORIGIN}/sitemap.xml`]);
   });
 });
 
