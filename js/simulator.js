@@ -131,6 +131,26 @@ function isMotionPaused() {
   return prefersReduced || paused;
 }
 
+/**
+ * Görsel yüklenemezse kırık ikon yerine alt metni sade bir yer tutucuyla gösterir.
+ */
+function attachImageFallback(img) {
+  img.addEventListener(
+    'error',
+    () => {
+      img.classList.add('sim-img--broken');
+    },
+    { once: true },
+  );
+}
+
+/** Modüle göreli görsel yolu üretir (sayfa alt dizinde olsa da doğru çözülür). */
+const SIM_IMAGES = {
+  vitrinosScene: () => new URL('../assets/img/vitrinos-scene.jpg', import.meta.url).href,
+  vitrinosReal: () => new URL('../assets/img/vitrinos-real.png', import.meta.url).href,
+  yesilnesilReal: () => new URL('../assets/img/yesilnesil-real.png', import.meta.url).href,
+};
+
 function createEl(tag, className, text) {
   const el = document.createElement(tag);
   if (className) {
@@ -502,7 +522,8 @@ function setupVitrinOSStage(leftEl, rightEl, instantComplete, schedule) {
   );
   const dropPreview = createEl('div', 'sim-vo-dropzone-preview');
   const photo = createEl('img', 'sim-vo-thumb');
-  photo.src = 'assets/img/vitrinos-scene.jpg';
+  attachImageFallback(photo);
+  photo.src = SIM_IMAGES.vitrinosScene();
   photo.alt = 'VitrinOS ham ürün fotoğrafı';
   const dropMeta = createEl('div', 'sim-vo-dropzone-meta');
   const dropFile = createEl('span', 'sim-vo-dropzone-file', 'keten-elbise-ham.jpg');
@@ -603,7 +624,8 @@ function setupVitrinOSStage(leftEl, rightEl, instantComplete, schedule) {
     if (resultStage.childElementCount === 0) {
       const previewCard = createEl('div', 'sim-vo-preview-card');
       const img = createEl('img', 'sim-vo-result-img');
-      img.src = 'assets/img/vitrinos-real.png';
+      attachImageFallback(img);
+      img.src = SIM_IMAGES.vitrinosReal();
       img.alt = 'VitrinOS üretilen kampanya görseli';
 
       const formatTags = createEl('div', 'sim-vo-format-tags');
@@ -760,7 +782,8 @@ function setupYesilNesilStage(leftEl, rightEl, instantComplete, schedule) {
     'Google sonucuna tıklanması bekleniyor...',
   );
   const siteImg = createEl('img', 'sim-site-img');
-  siteImg.src = 'assets/img/yesilnesil-real.png';
+  attachImageFallback(siteImg);
+  siteImg.src = SIM_IMAGES.yesilnesilReal();
   siteImg.alt = 'Yeşil Nesil The Garden orijinal web sitesi ekran görüntüsü';
   siteViewport.append(sitePlaceholder, siteImg);
 
@@ -819,6 +842,9 @@ function setupYesilNesilStage(leftEl, rightEl, instantComplete, schedule) {
   return 4900;
 }
 
+/** Önceki initSimulator çağrısının dinleyici/zamanlayıcılarını temizler (tekrar çağrıda katlanmayı önler). */
+let teardownPrevious = null;
+
 const STAGE_BUILDERS = {
   salonzeka: setupSalonZekaStage,
   vitrinos: setupVitrinOSStage,
@@ -829,10 +855,22 @@ const STAGE_BUILDERS = {
  * Sıfır tıklamalı Tam Otonom Çift Ekranlı Canlı Deneyim Motorunu başlatır.
  */
 export function initSimulator() {
+  if (typeof teardownPrevious === 'function') {
+    teardownPrevious();
+    teardownPrevious = null;
+  }
+
   const root = document.querySelector('[data-simulator]');
   if (!root) {
     return;
   }
+
+  /** @type {Array<() => void>} */
+  const cleanups = [];
+  const listen = (target, type, handler) => {
+    target.addEventListener(type, handler);
+    cleanups.push(() => target.removeEventListener(type, handler));
+  };
 
   const tabs = Array.from(root.querySelectorAll('[data-sim-tab]'));
   const replayButton = root.querySelector('[data-sim-replay]');
@@ -842,12 +880,37 @@ export function initSimulator() {
   const summaryEl = root.querySelector('[data-sim-summary]');
   const statusTextEl = root.querySelector('[data-sim-status-text]');
 
+  // WAI-ARIA Tabs: sekme id'leri ve aria-controls'un gerçekten var olan tabpanel'i göstermesi
+  const controlsId = tabs[0]?.getAttribute('aria-controls');
+  const panelEl = (controlsId && document.getElementById(controlsId)) || root.querySelector('[role="tabpanel"]');
+  if (panelEl && !panelEl.id) {
+    panelEl.id = 'sim-panel';
+  }
+  for (const tab of tabs) {
+    const key = tab.getAttribute('data-sim-tab');
+    if (!tab.id && key) {
+      tab.id = `sim-tab-${key}`;
+    }
+    if (panelEl) {
+      tab.setAttribute('aria-controls', panelEl.id);
+    }
+  }
+
   let activeKey =
     tabs.find((tab) => tab.classList.contains('is-active') || tab.getAttribute('aria-selected') === 'true')
       ?.getAttribute('data-sim-tab') || 'salonzeka';
 
   if (!SIMULATOR_SCENARIOS[activeKey]) {
     activeKey = 'salonzeka';
+  }
+
+  // Roving tabindex başlangıcı: yalnız aktif sekme Tab sırasında
+  for (const tab of tabs) {
+    const isSelected = tab.getAttribute('data-sim-tab') === activeKey;
+    tab.setAttribute('tabindex', isSelected ? '0' : '-1');
+    if (isSelected && panelEl && tab.id) {
+      panelEl.setAttribute('aria-labelledby', tab.id);
+    }
   }
 
   let timers = [];
@@ -859,6 +922,16 @@ export function initSimulator() {
       window.clearTimeout(id);
     }
     timers = [];
+  };
+
+  // Teardown, dinleyici/zamanlayıcı kaydı başlamadan atanır: init ortasında istisna olsa da
+  // o ana kadar kaydedilenler bir sonraki initSimulator çağrısında temizlenir.
+  teardownPrevious = () => {
+    runToken += 1;
+    clearTimers();
+    for (const cleanup of cleanups.splice(0)) {
+      cleanup();
+    }
   };
 
   const setActiveTimelineStep = (stepIndex) => {
@@ -885,6 +958,10 @@ export function initSimulator() {
       const isSelected = tab.getAttribute('data-sim-tab') === scenarioKey;
       tab.classList.toggle('is-active', isSelected);
       tab.setAttribute('aria-selected', String(isSelected));
+      tab.setAttribute('tabindex', isSelected ? '0' : '-1');
+      if (isSelected && panelEl && tab.id) {
+        panelEl.setAttribute('aria-labelledby', tab.id);
+      }
     }
 
     if (summaryEl) {
@@ -941,8 +1018,13 @@ export function initSimulator() {
         if (currentToken !== runToken || isMotionPaused()) {
           return;
         }
-        setActiveTimelineStep(stepIdx);
-        fn();
+        try {
+          setActiveTimelineStep(stepIdx);
+          fn();
+        } catch (error) {
+          // Tek bir adımın hatası zaman çizelgesinin kalanını bozmasın
+          console.error(`[simulator] "${scenarioKey}" adım ${stepIdx} çalıştırılamadı:`, error);
+        }
       }, delayMs);
       timers.push(id);
     };
@@ -958,39 +1040,69 @@ export function initSimulator() {
     timers.push(loopId);
   };
 
-  for (const tab of tabs) {
-    tab.addEventListener('click', () => {
-      const nextKey = tab.getAttribute('data-sim-tab');
-      if (!nextKey || !SIMULATOR_SCENARIOS[nextKey]) {
-        return;
+  const activateTab = (tab) => {
+    const nextKey = tab.getAttribute('data-sim-tab');
+    if (!nextKey || !SIMULATOR_SCENARIOS[nextKey]) {
+      return;
+    }
+    activeKey = nextKey;
+    runSimulation(activeKey);
+  };
+
+  tabs.forEach((tab, index) => {
+    listen(tab, 'click', () => activateTab(tab));
+    listen(tab, 'keydown', (event) => {
+      let targetIndex = null;
+      switch (event.key) {
+        case 'ArrowRight':
+          targetIndex = (index + 1) % tabs.length;
+          break;
+        case 'ArrowLeft':
+          targetIndex = (index - 1 + tabs.length) % tabs.length;
+          break;
+        case 'Home':
+          targetIndex = 0;
+          break;
+        case 'End':
+          targetIndex = tabs.length - 1;
+          break;
+        default:
+          return;
       }
-      activeKey = nextKey;
-      runSimulation(activeKey);
+      event.preventDefault();
+      const target = tabs[targetIndex];
+      if (target) {
+        target.focus();
+        activateTab(target);
+      }
     });
-  }
+  });
 
   if (replayButton) {
-    replayButton.addEventListener('click', () => {
+    listen(replayButton, 'click', () => {
       runSimulation(activeKey);
     });
   }
 
-  window.addEventListener('ma:motion-change', () => {
-    if (isMotionPaused()) {
-      runSimulation(activeKey);
-    } else if (isInView) {
+  listen(window, 'ma:motion-change', () => {
+    if (isMotionPaused() || isInView) {
       runSimulation(activeKey);
     }
   });
 
   if (typeof window.matchMedia === 'function') {
     const reducedQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleReducedChange = () => {
+      if (isMotionPaused() || isInView) {
+        runSimulation(activeKey);
+      }
+    };
     if (typeof reducedQuery.addEventListener === 'function') {
-      reducedQuery.addEventListener('change', () => {
-        if (isMotionPaused() || isInView) {
-          runSimulation(activeKey);
-        }
-      });
+      listen(reducedQuery, 'change', handleReducedChange);
+    } else if (typeof reducedQuery.addListener === 'function') {
+      // Eski Safari (<14) için MediaQueryList fallback'i
+      reducedQuery.addListener(handleReducedChange);
+      cleanups.push(() => reducedQuery.removeListener(handleReducedChange));
     }
   }
 
@@ -1013,7 +1125,9 @@ export function initSimulator() {
       { threshold: 0.18 },
     );
     observer.observe(root);
+    cleanups.push(() => observer.disconnect());
   } else {
     runSimulation(activeKey);
   }
+
 }

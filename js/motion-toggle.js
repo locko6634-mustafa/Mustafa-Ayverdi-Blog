@@ -90,6 +90,17 @@ export function initMotionToggle() {
     });
   }
 
+  // Başka sekmede tercih değişirse bu sekmeyi senkronla (storage olayı yalnız diğer sekmelerde tetiklenir)
+  window.addEventListener('storage', (event) => {
+    if (event.key !== null && event.key !== STORAGE_KEY) {
+      return;
+    }
+    const nextPaused = readStoredMotion() === 'paused';
+    if (nextPaused !== paused) {
+      applyState(nextPaused, { notify: true });
+    }
+  });
+
   return {
     isPaused: () => paused,
   };

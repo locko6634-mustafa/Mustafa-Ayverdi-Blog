@@ -27,7 +27,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done
+          shopt -s nullglob
+          js_files=(js/*.js)
+          if [ "${#js_files[@]}" -eq 0 ]; then
+            echo "::error::js/ altında .js dosyası bulunamadı; sözdizimi kontrolü yapılamadı."
+            exit 1
+          fi
+          for f in "${js_files[@]}"; do node --check --input-type=module < "$f" || exit 1; done
           node --test tests/smoke.test.mjs
 
       - name: Validate deploy target
@@ -60,43 +66,71 @@ jobs:
           SSH_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
+
+          # Port doğrulaması (yalnız rakam, 1-65535)
+          if ! [[ "${SSH_PORT}" =~ ^[0-9]{1,5}$ ]] || [ "$((10#${SSH_PORT}))" -lt 1 ] || [ "$((10#${SSH_PORT}))" -gt 65535 ]; then
+            echo "::error::SERVER_PORT geçersiz (1-65535 arası sayı olmalı); deploy durduruldu."
+            exit 1
+          fi
+          SSH_PORT="$((10#${SSH_PORT}))"
+
+          # Host anahtarı sabitlenmeli; TOFU (ssh-keyscan) yok
+          if [ -z "${SSH_KNOWN_HOSTS}" ]; then
+            echo "::error::SERVER_KNOWN_HOSTS secret'ı tanımlı değil; host anahtarı doğrulanamadan deploy yapılmaz."
+            exit 1
+          fi
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           (umask 077 && printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key)
           chmod 600 ~/.ssh/deploy_key
-
-          if [ -n "${SSH_KNOWN_HOSTS}" ]; then
-            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          else
-            echo "::warning::SERVER_KNOWN_HOSTS tanımlı değil; host anahtarı sabitlenmemiş, ssh-keyscan kullanılıyor."
-            scanned="$(ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" 2>/dev/null || true)"
-            if [ -z "${scanned}" ]; then
-              echo "::error::ssh-keyscan host anahtarı döndürmedi."
-              exit 1
-            fi
-            printf '%s\n' "$scanned" > ~/.ssh/known_hosts
-          fi
+          (umask 077 && printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts)
           chmod 600 ~/.ssh/known_hosts
 
-          SSH_OPTS="-o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -i $HOME/.ssh/deploy_key -p ${SSH_PORT}"
+          KEY_FILE="$HOME/.ssh/deploy_key"
+          KNOWN_HOSTS_FILE="$HOME/.ssh/known_hosts"
+          SSH_OPTS=(
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o "UserKnownHostsFile=${KNOWN_HOSTS_FILE}"
+            -i "${KEY_FILE}"
+            -p "${SSH_PORT}"
+          )
+          # rsync -e tek bir string bekler; içindeki tüm değerler doğrulanmış
+          # (port yalnız rakam, yollar $HOME altında sabit ve boşluksuz olmalı).
+          case "${KEY_FILE}${KNOWN_HOSTS_FILE}" in
+            *[[:space:]]*|*\'*|*\"*) echo "::error::SSH dosya yolu beklenmeyen karakter içeriyor."; exit 1 ;;
+          esac
+          RSYNC_RSH="ssh -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${KNOWN_HOSTS_FILE} -i ${KEY_FILE} -p ${SSH_PORT}"
 
-          # shellcheck disable=SC2086
-          ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "mkdir -p /home/${SSH_USER}/mustafa-ayverdi-blog/site"
+          REMOTE_DIR="/home/${SSH_USER}/mustafa-ayverdi-blog/site"
 
-          rsync -avz --delete \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='.agents' \
-            --exclude='.claude/' \
-            --exclude='node_modules/' \
-            --exclude='tests' \
-            --exclude='CLAUDE.md' \
-            --exclude='AGENT.md' \
-            --exclude='AGENTS.md' \
-            --exclude='*.sh' \
-            --exclude='.gitignore' \
-            -e "ssh ${SSH_OPTS}" \
-            ./ "${SSH_USER}@${SSH_HOST}:/home/${SSH_USER}/mustafa-ayverdi-blog/site/"
+          # Beyaz liste: yalnız yayınlanacak dosyalar temiz bir staging dizinine kopyalanır
+          STAGING="$(mktemp -d)"
+          chmod 755 "${STAGING}"
+          trap 'rm -rf "${STAGING}"' EXIT
+          for f in index.html robots.txt sitemap.xml; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Yayın dosyası eksik: $f"
+              exit 1
+            fi
+            cp -p -- "$f" "${STAGING}/"
+          done
+          for d in css js assets notlar projeler; do
+            if [ ! -d "$d" ]; then
+              echo "::error::Yayın dizini eksik: $d/"
+              exit 1
+            fi
+            cp -a -- "$d" "${STAGING}/"
+          done
+          # Savunma derinliği: staging içinde gizli/yedek/anahtar dosya kalmasın
+          find "${STAGING}" -mindepth 1 \( -name '.*' -o -name '*.pem' -o -name '*.key' -o -name '*.bak' -o -name '*.sh' -o -name '*.md' \) -prune -exec rm -rf -- {} +
+
+          ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "mkdir -p '${REMOTE_DIR}'"
+
+          rsync -avz --delete --max-delete=200 --chmod=D755,F644 \
+            -e "${RSYNC_RSH}" \
+            "${STAGING}/" "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
 
       - name: Clean up SSH key
         if: always()

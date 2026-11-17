@@ -40,6 +40,219 @@ function isExternalOrHash(url) {
   );
 }
 
+// --- Küçük HTML nitelik ayrıştırıcısı (çift, tek ve tırnaksız değerleri tanır) ---
+
+/**
+ * Bir başlangıç etiketinin nitelik metnini ayrıştırır.
+ * Ad küçük harfe çevrilir; HTML kuralına uygun olarak yinelenen nitelikte ilk değer kazanır.
+ * Değersiz (boolean) nitelikler '' döner.
+ * @param {string} attrText
+ * @returns {Map<string, string>}
+ */
+function parseAttributes(attrText) {
+  const attrs = new Map();
+  const attrRegex = /([^\s"'<>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+  for (const m of attrText.matchAll(attrRegex)) {
+    const name = m[1].toLowerCase();
+    if (attrs.has(name)) {
+      continue;
+    }
+    attrs.set(name, m[2] ?? m[3] ?? m[4] ?? '');
+  }
+  return attrs;
+}
+
+/**
+ * HTML içindeki başlangıç etiketlerini (yorumlar hariç) ayrıştırılmış nitelikleriyle döndürür.
+ * Tırnak içindeki '>' karakterleri etiketi erken bitirmez.
+ * @param {string} html
+ * @param {string[]} [names] yalnız bu etiket adları (küçük harf)
+ */
+function findTags(html, names) {
+  const wanted = names ? new Set(names) : null;
+  const stripped = html.replace(/<!--[\s\S]*?-->/g, '');
+  const tagRegex = /<([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+  const tags = [];
+  for (const m of stripped.matchAll(tagRegex)) {
+    const name = m[1].toLowerCase();
+    if (wanted && !wanted.has(name)) {
+      continue;
+    }
+    tags.push({ name, attrs: parseAttributes(m[2]), raw: m[0] });
+  }
+  return tags;
+}
+
+/**
+ * target="_blank" güvenlik ihlallerini döndürür:
+ * - <a>, <area>, <form> target=_blank ise rel içinde noopener ve noreferrer zorunlu
+ * - <base target=_blank> tamamen yasak (tüm sayfayı etkiler)
+ * @param {string} html
+ * @returns {string[]}
+ */
+function findBlankTargetViolations(html) {
+  const violations = [];
+  for (const { name, attrs, raw } of findTags(html, ['a', 'area', 'form', 'base'])) {
+    if (!attrs.has('target') || attrs.get('target').trim().toLowerCase() !== '_blank') {
+      continue;
+    }
+    if (name === 'base') {
+      violations.push(`<base target="_blank"> yasak: ${raw}`);
+      continue;
+    }
+    if (!attrs.has('rel')) {
+      violations.push(`rel niteliği eksik target="_blank" <${name}>: ${raw}`);
+      continue;
+    }
+    const relTokens = attrs.get('rel').toLowerCase().split(/\s+/);
+    if (!relTokens.includes('noopener') || !relTokens.includes('noreferrer')) {
+      violations.push(`noopener/noreferrer eksik <${name}>: ${raw}`);
+    }
+  }
+  return violations;
+}
+
+/**
+ * HTML içindeki href/src nitelik değerlerini (tüm tırnak biçimleriyle) döndürür.
+ * @param {string} html
+ * @returns {string[]}
+ */
+function collectLinkValues(html) {
+  const values = [];
+  for (const { attrs } of findTags(html)) {
+    for (const attr of ['href', 'src']) {
+      if (attrs.has(attr)) {
+        values.push(attrs.get(attr));
+      }
+    }
+  }
+  return values;
+}
+
+// --- CSP politika denetimi ---
+
+const REQUIRED_CSP_DIRECTIVES = {
+  'default-src': ["'self'"],
+  'script-src': ["'self'"],
+  'style-src': ["'self'"],
+  'object-src': ["'none'"],
+  'base-uri': ["'self'"],
+  'form-action': ["'none'"],
+};
+
+function parseCsp(policy) {
+  return new Map(
+    policy
+      .split(';')
+      .map((d) => d.trim().split(/\s+/))
+      .filter((parts) => parts[0])
+      .map(([name, ...values]) => [name.toLowerCase(), values]),
+  );
+}
+
+/**
+ * CSP politikasındaki sorunları döndürür (boş dizi = geçerli).
+ * @param {string} policy
+ * @returns {string[]}
+ */
+function analyzeCsp(policy) {
+  const problems = [];
+  const directives = parseCsp(policy);
+  for (const [name, expected] of Object.entries(REQUIRED_CSP_DIRECTIVES)) {
+    const actual = directives.get(name);
+    if (!actual) {
+      problems.push(`${name} direktifi eksik`);
+    } else if (actual.join(' ') !== expected.join(' ')) {
+      problems.push(`${name} "${expected.join(' ')}" olmalı, bulunan: "${actual.join(' ')}"`);
+    }
+  }
+  const forbiddenKeywords = new Set(["'unsafe-inline'", "'unsafe-eval'", "'unsafe-hashes'"]);
+  for (const [name, values] of directives) {
+    for (const raw of values) {
+      const value = raw.toLowerCase();
+      if (forbiddenKeywords.has(value)) {
+        problems.push(`${name} içinde ${raw}`);
+      } else if (value.includes('*')) {
+        problems.push(`${name} içinde joker (*) kaynak: ${raw}`);
+      } else if (value === 'http:' || value.startsWith('http://')) {
+        problems.push(`${name} içinde güvensiz http: kaynağı: ${raw}`);
+      } else if (value === 'data:') {
+        problems.push(`${name} içinde data: kaynağı`);
+      }
+    }
+  }
+  return problems;
+}
+
+describe('Test Yardımcıları (sentetik negatif kontroller)', () => {
+  it('nitelik ayrıştırıcısı çift, tek ve tırnaksız target=_blank ihlallerini yakalamalı', () => {
+    const attrs = parseAttributes(` href='https://x' target=_blank data-a="1 > 2" hidden rel="a" REL="b"`);
+    assert.equal(attrs.get('href'), 'https://x');
+    assert.equal(attrs.get('target'), '_blank');
+    assert.equal(attrs.get('data-a'), '1 > 2');
+    assert.equal(attrs.get('hidden'), '');
+    assert.equal(attrs.get('rel'), 'a', 'yinelenen nitelikte ilk değer kazanmalı');
+
+    const mustFail = [
+      `<a href='https://x' target='_blank'>x</a>`,
+      `<a href=https://x target=_blank>x</a>`,
+      `<a href="https://x" target="_blank">x</a>`,
+      `<a href="https://x" TARGET="_BLANK" rel='noopener'>x</a>`,
+      `<a target=_blank rel=noopener href=/x>x</a>`,
+      `<a data-x="a > b" target='_blank'>x</a>`,
+      `<area href="/x" target=_blank alt="x">`,
+      `<form action="/x" target='_blank'></form>`,
+      `<base target="_blank">`,
+      `<base href="/" target=_blank>`,
+    ];
+    for (const sample of mustFail) {
+      assert.equal(findBlankTargetViolations(sample).length, 1, `İhlal yakalanmadı: ${sample}`);
+    }
+
+    const mustPass = [
+      `<a href='https://x' target='_blank' rel='noopener noreferrer'>x</a>`,
+      `<a href=https://x target=_blank rel="noreferrer noopener external">x</a>`,
+      `<a href="/x" target="_self">x</a>`,
+      `<a href="/x">x</a>`,
+      `<!-- <a href="https://x" target="_blank"> -->`,
+      `<base href="/">`,
+    ];
+    for (const sample of mustPass) {
+      assert.deepEqual(findBlankTargetViolations(sample), [], `Yanlış pozitif: ${sample}`);
+    }
+
+    assert.deepEqual(
+      collectLinkValues(`<link href="a.css"><img src='b.png'><script src=c.js></script><a href=#top>t</a>`),
+      ['a.css', 'b.png', 'c.js', '#top'],
+    );
+  });
+
+  it('CSP analizcisi zayıf politikaları reddetmeli, güçlü politikayı kabul etmeli', () => {
+    const strong =
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'";
+    assert.deepEqual(analyzeCsp(strong), []);
+
+    const weakVariants = [
+      strong.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'"),
+      strong.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'"),
+      strong.replace("img-src 'self'", "img-src 'self' 'unsafe-hashes'"),
+      strong.replace("img-src 'self'", "img-src 'self' 'unsafe-eval'"),
+      strong.replace("img-src 'self'", "img-src 'self' data:"),
+      strong.replace("img-src 'self'", 'img-src *'),
+      strong.replace("img-src 'self'", 'img-src https://*.example.com'),
+      strong.replace("img-src 'self'", 'img-src http:'),
+      strong.replace("img-src 'self'", 'img-src http://cdn.example.com'),
+      strong.replace("; object-src 'none'", ''),
+      strong.replace("base-uri 'self'", 'base-uri *'),
+      strong.replace("form-action 'none'", "form-action 'self'"),
+      strong.replace("default-src 'self'", "default-src 'self' https:"),
+    ];
+    for (const policy of weakVariants) {
+      assert.ok(analyzeCsp(policy).length > 0, `Zayıf CSP kabul edildi: ${policy}`);
+    }
+  });
+});
+
 describe('JS Modülleri ve Güvenlik Sözleşmesi', () => {
   it('tüm zorunlu ES modülleri mevcut olmalı', () => {
     const expectedModules = [
@@ -115,15 +328,13 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
     const htmlFiles = walkFiles(ROOT_DIR, '.html');
     assert.ok(htmlFiles.length > 0, 'Hiç HTML dosyası bulunamadı');
 
-    const attrRegex = /\b(?:href|src)\s*=\s*"([^"]+)"/g;
-
     for (const htmlFile of htmlFiles) {
       const content = fs.readFileSync(htmlFile, 'utf8');
       const dir = path.dirname(htmlFile);
       const relHtml = path.relative(ROOT_DIR, htmlFile);
 
-      for (const match of content.matchAll(attrRegex)) {
-        const rawUrl = match[1].trim();
+      for (const value of collectLinkValues(content)) {
+        const rawUrl = value.trim();
         if (isExternalOrHash(rawUrl)) {
           continue;
         }
@@ -145,27 +356,20 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
     }
   });
 
-  it('target="_blank" kullanılan tüm bağlantılarda rel="noopener noreferrer" bulunmalı', () => {
+  it('target="_blank" kullanılan tüm <a>/<area>/<form> etiketlerinde rel="noopener noreferrer" bulunmalı; <base target="_blank"> yasak', () => {
     const htmlFiles = walkFiles(ROOT_DIR, '.html');
     assert.ok(htmlFiles.length > 0, 'Hiç HTML dosyası bulunamadı');
 
-    const anchorRegex = /<a\b[^>]*\btarget\s*=\s*"_blank"[^>]*>/gi;
-
+    const problems = [];
     for (const htmlFile of htmlFiles) {
       const content = fs.readFileSync(htmlFile, 'utf8');
       const relHtml = path.relative(ROOT_DIR, htmlFile);
-
-      for (const match of content.matchAll(anchorRegex)) {
-        const tag = match[0];
-        const relMatch = tag.match(/\brel\s*=\s*"([^"]*)"/i);
-        assert.ok(relMatch, `${relHtml} içinde rel niteliği eksik target="_blank" linki: ${tag}`);
-        const relTokens = relMatch[1].toLowerCase().split(/\s+/);
-        assert.ok(
-          relTokens.includes('noopener') && relTokens.includes('noreferrer'),
-          `${relHtml} içinde noopener/noreferrer eksik: ${tag}`,
-        );
+      for (const violation of findBlankTargetViolations(content)) {
+        problems.push(`${relHtml}: ${violation}`);
       }
     }
+
+    assert.deepEqual(problems, [], `target="_blank" ihlalleri:\n${problems.join('\n')}`);
   });
 
   it('index.html simülatör kancaları (data-simulator, çift ekran ve timeline) sözleşmeye uymalı', () => {
@@ -460,59 +664,112 @@ describe('Çalışma Zamanı Davranışı (stub DOM)', () => {
 });
 
 describe('HTML Güvenlik Başlıkları (meta)', () => {
-  it('her sayfa <head> içinde CSP ve referrer meta etiketi taşımalı; script-src unsafe-* içermemeli', () => {
-    const htmlFiles = [
-      path.join(ROOT_DIR, 'index.html'),
-      ...walkFiles(path.join(ROOT_DIR, 'projeler'), '.html'),
-      ...walkFiles(path.join(ROOT_DIR, 'notlar'), '.html'),
-    ];
-    assert.ok(htmlFiles.length > 1, 'HTML sayfaları bulunamadı');
+  const htmlPages = walkFiles(ROOT_DIR, '.html');
+
+  /** @returns {{ rel: string, policy: string | null, problems: string[] }} */
+  function readPageCsp(file) {
+    const rel = path.relative(ROOT_DIR, file);
+    const html = fs.readFileSync(file, 'utf8');
+    const problems = [];
+    const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1];
+    if (!head) {
+      return { rel, policy: null, problems: [`${rel}: <head> bulunamadı`] };
+    }
+
+    const cspTags = findTags(head, ['meta']).filter(
+      ({ attrs }) => (attrs.get('http-equiv') ?? '').trim().toLowerCase() === 'content-security-policy',
+    );
+    if (cspTags.length !== 1) {
+      problems.push(`${rel}: <head> içinde tam 1 CSP meta etiketi olmalı (bulunan: ${cspTags.length})`);
+    }
+    const policy = cspTags[0]?.attrs.get('content')?.trim() || null;
+    if (cspTags.length > 0 && !policy) {
+      problems.push(`${rel}: CSP content boş`);
+    }
+
+    const hasReferrer = findTags(head, ['meta']).some(
+      ({ attrs }) => (attrs.get('name') ?? '').trim().toLowerCase() === 'referrer',
+    );
+    if (!hasReferrer) {
+      problems.push(`${rel}: referrer meta etiketi eksik`);
+    }
+    return { rel, policy, problems };
+  }
+
+  it('her sayfa <head> içinde CSP ve referrer meta etiketi taşımalı; CSP zorunlu direktifleri içermeli ve unsafe-*/*/http:/data: barındırmamalı', () => {
+    assert.ok(htmlPages.length > 1, 'HTML sayfaları bulunamadı');
 
     const problems = [];
-    for (const file of htmlFiles) {
-      const rel = path.relative(ROOT_DIR, file);
-      const html = fs.readFileSync(file, 'utf8');
-      const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1];
-      if (!head) {
-        problems.push(`${rel}: <head> bulunamadı`);
-        continue;
-      }
-
-      const cspTag = head.match(/<meta\b[^>]*http-equiv\s*=\s*["']Content-Security-Policy["'][^>]*>/i)?.[0];
-      if (!cspTag) {
-        problems.push(`${rel}: CSP meta etiketi eksik`);
-      } else {
-        const policy = cspTag.match(/\bcontent\s*=\s*"([^"]*)"/i)?.[1] ?? cspTag.match(/\bcontent\s*=\s*'([^']*)'/i)?.[1];
-        if (!policy) {
-          problems.push(`${rel}: CSP content boş`);
-        } else {
-          const directives = new Map(
-            policy
-              .split(';')
-              .map((d) => d.trim().split(/\s+/))
-              .filter((parts) => parts[0])
-              .map(([name, ...values]) => [name.toLowerCase(), values]),
-          );
-          const scriptSources = directives.get('script-src') ?? directives.get('default-src');
-          if (!scriptSources) {
-            problems.push(`${rel}: CSP script-src (veya default-src) direktifi yok`);
-          }
-          for (const name of ['script-src', 'script-src-elem', 'script-src-attr', 'default-src']) {
-            const values = directives.get(name) ?? [];
-            for (const bad of ["'unsafe-inline'", "'unsafe-eval'"]) {
-              if (values.includes(bad) && (name !== 'default-src' || !directives.has('script-src'))) {
-                problems.push(`${rel}: ${name} içinde ${bad}`);
-              }
-            }
-          }
+    for (const file of htmlPages) {
+      const { rel, policy, problems: pageProblems } = readPageCsp(file);
+      problems.push(...pageProblems);
+      if (policy) {
+        for (const p of analyzeCsp(policy)) {
+          problems.push(`${rel}: ${p}`);
         }
-      }
-
-      if (!/<meta\b[^>]*\bname\s*=\s*["']referrer["'][^>]*>/i.test(head)) {
-        problems.push(`${rel}: referrer meta etiketi eksik`);
       }
     }
 
     assert.deepEqual(problems, [], `Güvenlik meta sorunları:\n${problems.join('\n')}`);
+  });
+
+  it('kökteki tüm HTML sayfalarının CSP politikası birebir aynı olmalı', () => {
+    assert.ok(htmlPages.length > 1, 'HTML sayfaları bulunamadı');
+
+    const byPolicy = new Map();
+    for (const file of htmlPages) {
+      const { rel, policy } = readPageCsp(file);
+      const key = policy ?? '<CSP yok>';
+      if (!byPolicy.has(key)) {
+        byPolicy.set(key, []);
+      }
+      byPolicy.get(key).push(rel);
+    }
+
+    assert.equal(
+      byPolicy.size,
+      1,
+      `Sayfalar arasında farklı CSP politikaları var:\n${Array.from(byPolicy)
+        .map(([policy, pages]) => `- "${policy}" → ${pages.join(', ')}`)
+        .join('\n')}`,
+    );
+  });
+});
+
+describe('Aşamalı Geliştirme Sözleşmesi (JS yoksa içerik görünür kalmalı)', () => {
+  it('css/motion.css içinde opacity: 0 içeren [data-reveal] kuralları .js sınıfına bağlı olmalı', () => {
+    const css = fs.readFileSync(path.join(ROOT_DIR, 'css', 'motion.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+
+    // En içteki "seçici { gövde }" bloklarını yakala (@layer/@media sarmalayıcıları atlanır).
+    const ruleRegex = /([^{}]+)\{([^{}]*)\}/g;
+    const hidingSelectors = [];
+    for (const m of css.matchAll(ruleRegex)) {
+      const body = m[2];
+      if (!/(^|[;\s])opacity\s*:\s*0(?![.\d])/.test(body)) {
+        continue;
+      }
+      for (const selector of m[1].split(',').map((s) => s.trim())) {
+        if (selector.includes('[data-reveal]')) {
+          hidingSelectors.push(selector);
+        }
+      }
+    }
+
+    assert.ok(hidingSelectors.length > 0, 'opacity: 0 içeren [data-reveal] kuralı bulunamadı');
+    const unguarded = hidingSelectors.filter((s) => !/^(?:html)?\.js\s+\[data-reveal\]/.test(s));
+    assert.deepEqual(
+      unguarded,
+      [],
+      `[data-reveal] gizleme kuralı .js sınıfına bağlı değil (JS yüklenmezse içerik görünmez kalır):\n${unguarded.join('\n')}`,
+    );
+  });
+
+  it("js/main.js document.documentElement.classList.add('js') çağırmalı", () => {
+    const mainJs = fs.readFileSync(path.join(ROOT_DIR, 'js', 'main.js'), 'utf8');
+    assert.match(
+      mainJs,
+      /document\.documentElement\.classList\.add\(\s*(['"`])js\1\s*\)/,
+      "js/main.js içinde document.documentElement.classList.add('js') bulunamadı",
+    );
   });
 });

@@ -1708,6 +1708,16 @@
     transform: scale(1);
   }
 
+  /* Simülatör görseli yüklenemezse: kırık ikon yerine alt metin sade yer tutucuda görünür */
+  .sim-img--broken {
+    opacity: 1;
+    transform: none;
+    background-color: var(--paper);
+    color: var(--muted);
+    font-size: 0.75rem;
+    object-fit: none;
+  }
+
   .sim-speed-badge {
     flex-shrink: 0;
     padding: 0.2rem 0.55rem;

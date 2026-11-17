@@ -44,7 +44,14 @@ export function initAccordion() {
 
   for (const accordion of accordions) {
     const allowMultiple = accordion.hasAttribute('data-accordion-multiple');
-    const triggers = Array.from(accordion.querySelectorAll('[data-accordion-trigger]'));
+    // İç içe akordiyonların tetikleyicilerini dışla: yalnız bu akordiyona ait olanlar
+    const triggers = Array.from(accordion.querySelectorAll('[data-accordion-trigger]')).filter(
+      (trigger) => {
+        const owner = typeof trigger.closest === 'function' ? trigger.closest('[data-accordion]') : null;
+        // Gerçek DOM'da owner en az bu akordiyondur; çözülemezse (null) tetikleyiciyi koru
+        return owner === null || owner === accordion;
+      },
+    );
 
     if (triggers.length === 0) {
       continue;

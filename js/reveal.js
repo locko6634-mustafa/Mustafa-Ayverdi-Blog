@@ -44,10 +44,14 @@ export function initReveal() {
     observer.observe(el);
   }
 
-  window.addEventListener('ma:motion-change', (event) => {
+  // Duraklatınca tüm öğeler kalıcı olarak görünür olur ve gözlem biter. Yeniden başlatıldığında
+  // gizlenecek/izlenecek öğe kalmadığından observer yeniden kurulmaz; dinleyici de artık gereksizdir.
+  const handleMotionChange = (event) => {
     if (event.detail?.paused) {
       revealAll();
       observer.disconnect();
+      window.removeEventListener('ma:motion-change', handleMotionChange);
     }
-  });
+  };
+  window.addEventListener('ma:motion-change', handleMotionChange);
 }
