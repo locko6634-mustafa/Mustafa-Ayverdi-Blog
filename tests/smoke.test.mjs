@@ -2,7 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { SIMULATOR_SCENARIOS } from '../js/simulator.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -62,9 +63,12 @@ describe('JS Modülleri ve Güvenlik Sözleşmesi', () => {
     assert.ok(jsFiles.length >= 7, 'JS dosyaları bulunamadı');
 
     const forbiddenPatterns = [
-      { name: 'innerHTML', regex: /\.innerHTML\b/ },
-      { name: 'outerHTML', regex: /\.outerHTML\b/ },
-      { name: 'insertAdjacentHTML', regex: /\.insertAdjacentHTML\b/ },
+      { name: 'innerHTML', regex: /\.innerHTML\b|\[\s*['"`]innerHTML['"`]\s*\]/ },
+      { name: 'outerHTML', regex: /\.outerHTML\b|\[\s*['"`]outerHTML['"`]\s*\]/ },
+      {
+        name: 'insertAdjacentHTML',
+        regex: /\.insertAdjacentHTML\b|\[\s*['"`]insertAdjacentHTML['"`]\s*\]/,
+      },
       { name: 'document.write', regex: /document\.write\b/ },
       { name: 'eval()', regex: /\beval\s*\(/ },
     ];
@@ -239,5 +243,276 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
         `index.html içinde yasaklı demo/teknik ifade tespit edildi: "${term}"`,
       );
     }
+  });
+});
+
+describe('JS Sözdizimi (dosya bazında node --check)', () => {
+  it('her js/*.js dosyası ayrı ayrı node --check denetiminden geçmeli', () => {
+    const jsFiles = walkFiles(path.join(ROOT_DIR, 'js'), '.js');
+    assert.ok(jsFiles.length >= 7, 'JS dosyaları bulunamadı');
+
+    // Not: Node 22'de `node --check dosya.js`, ES modül sözdizimi içeren .js dosyalarında
+    // (package.json "type" olmadan) sözdizimi hatasını sessizce geçebiliyor. Bu yüzden
+    // kaynak stdin'den --input-type=module ile denetlenir.
+    for (const file of jsFiles) {
+      const result = spawnSync(process.execPath, ['--check', '--input-type=module'], {
+        input: fs.readFileSync(file, 'utf8'),
+        encoding: 'utf8',
+      });
+      assert.equal(
+        result.status,
+        0,
+        `${path.relative(ROOT_DIR, file)} sözdizimi hatalı:\n${result.stderr}`,
+      );
+    }
+  });
+});
+
+// --- Minimal DOM stub'ları (jsdom olmadan çalışma zamanı testleri için) ---
+
+class FakeClassList {
+  constructor() {
+    this.set = new Set();
+  }
+  add(...names) {
+    names.forEach((n) => this.set.add(n));
+  }
+  remove(...names) {
+    names.forEach((n) => this.set.delete(n));
+  }
+  contains(name) {
+    return this.set.has(name);
+  }
+  toggle(name, force) {
+    const next = force === undefined ? !this.set.has(name) : Boolean(force);
+    if (next) {
+      this.set.add(name);
+    } else {
+      this.set.delete(name);
+    }
+    return next;
+  }
+}
+
+class FakeElement {
+  constructor(attrs = {}) {
+    this.attrs = new Map(Object.entries(attrs));
+    this.classList = new FakeClassList();
+    this.listeners = new Map();
+    this.hidden = false;
+    this.nextElementSibling = null;
+    this.focused = false;
+  }
+  getAttribute(name) {
+    return this.attrs.has(name) ? this.attrs.get(name) : null;
+  }
+  setAttribute(name, value) {
+    this.attrs.set(name, String(value));
+  }
+  hasAttribute(name) {
+    return this.attrs.has(name);
+  }
+  addEventListener(type, fn) {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, []);
+    }
+    this.listeners.get(type).push(fn);
+  }
+  dispatch(type, event = {}) {
+    for (const fn of this.listeners.get(type) ?? []) {
+      fn({ type, target: this, preventDefault() {}, ...event });
+    }
+  }
+  closest() {
+    return null;
+  }
+  querySelector() {
+    return null;
+  }
+  querySelectorAll() {
+    return [];
+  }
+  focus() {
+    this.focused = true;
+  }
+}
+
+function installGlobals({ document, window }) {
+  const previous = {
+    document: Object.getOwnPropertyDescriptor(globalThis, 'document'),
+    window: Object.getOwnPropertyDescriptor(globalThis, 'window'),
+  };
+  Object.defineProperty(globalThis, 'document', { value: document, configurable: true, writable: true });
+  Object.defineProperty(globalThis, 'window', { value: window, configurable: true, writable: true });
+  return () => {
+    for (const key of ['document', 'window']) {
+      if (previous[key]) {
+        Object.defineProperty(globalThis, key, previous[key]);
+      } else {
+        delete globalThis[key];
+      }
+    }
+  };
+}
+
+function importJs(name) {
+  return import(pathToFileURL(path.join(ROOT_DIR, 'js', name)).href);
+}
+
+describe('Çalışma Zamanı Davranışı (stub DOM)', () => {
+  it('initNav window.matchMedia yokken hata fırlatmamalı ve menüyü yönetebilmeli', async () => {
+    const toggle = new FakeElement({ 'data-nav-toggle': '' });
+    const drawer = new FakeElement({ id: 'mobile-nav' });
+    const documentStub = {
+      documentElement: new FakeElement(),
+      querySelector: (sel) => (sel === '[data-nav-toggle]' ? toggle : null),
+      getElementById: (id) => (id === 'mobile-nav' ? drawer : null),
+      addEventListener() {},
+    };
+    const restore = installGlobals({ document: documentStub, window: {} });
+    try {
+      const { initNav } = await importJs('nav.js');
+      assert.doesNotThrow(() => initNav());
+      assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+      assert.equal(drawer.hidden, true);
+
+      toggle.dispatch('click');
+      assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+      assert.equal(drawer.hidden, false);
+      assert.equal(documentStub.documentElement.classList.contains('nav-open'), true);
+    } finally {
+      restore();
+    }
+  });
+
+  it('main.js bootstrap bir başlatıcı hata fırlatsa da sonrakileri çalıştırmalı', async (t) => {
+    // document tanımsızken import: otomatik bootstrap tetiklenmemeli.
+    const { bootstrap, safeInit, INITIALIZERS } = await importJs('main.js');
+    const errorMock = t.mock.method(console, 'error', () => {});
+
+    assert.ok(Array.isArray(INITIALIZERS) && INITIALIZERS.length === 6, '6 modül başlatıcısı bekleniyor');
+
+    const calls = [];
+    bootstrap([
+      ['ilk', () => calls.push('ilk')],
+      [
+        'bozuk',
+        () => {
+          throw new Error('kasıtlı hata');
+        },
+      ],
+      ['son', () => calls.push('son')],
+    ]);
+
+    assert.deepEqual(calls, ['ilk', 'son']);
+    assert.equal(errorMock.mock.callCount(), 1, 'hata console.error ile raporlanmalı');
+    assert.equal(safeInit('ok', () => {}), true);
+    assert.equal(
+      safeInit('fail', () => {
+        throw new Error('x');
+      }),
+      false,
+    );
+  });
+
+  it('initAccordion tıklamada aria-expanded ve panel görünürlüğünü değiştirmeli', async () => {
+    const panelA = new FakeElement({ id: 'panel-a', 'data-accordion-panel': '' });
+    const panelB = new FakeElement({ id: 'panel-b', 'data-accordion-panel': '' });
+    const triggerA = new FakeElement({
+      'data-accordion-trigger': '',
+      'aria-controls': 'panel-a',
+      'aria-expanded': 'false',
+    });
+    const triggerB = new FakeElement({
+      'data-accordion-trigger': '',
+      'aria-controls': 'panel-b',
+      'aria-expanded': 'true',
+    });
+    const accordion = new FakeElement({ 'data-accordion': '' });
+    accordion.querySelectorAll = (sel) => (sel === '[data-accordion-trigger]' ? [triggerA, triggerB] : []);
+
+    const panels = { 'panel-a': panelA, 'panel-b': panelB };
+    const documentStub = {
+      querySelectorAll: (sel) => (sel === '[data-accordion]' ? [accordion] : []),
+      getElementById: (id) => panels[id] ?? null,
+    };
+    const restore = installGlobals({ document: documentStub, window: {} });
+    try {
+      const { initAccordion } = await importJs('accordion.js');
+      initAccordion();
+
+      assert.equal(panelA.hidden, true, 'kapalı panel başlangıçta gizli olmalı');
+      assert.equal(panelB.hidden, false, 'açık panel başlangıçta görünür olmalı');
+
+      triggerA.dispatch('click');
+      assert.equal(triggerA.getAttribute('aria-expanded'), 'true');
+      assert.equal(panelA.hidden, false);
+      assert.equal(triggerB.getAttribute('aria-expanded'), 'false', 'tekli modda diğer öğe kapanmalı');
+      assert.equal(panelB.hidden, true);
+
+      triggerA.dispatch('click');
+      assert.equal(triggerA.getAttribute('aria-expanded'), 'false');
+      assert.equal(panelA.hidden, true);
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe('HTML Güvenlik Başlıkları (meta)', () => {
+  it('her sayfa <head> içinde CSP ve referrer meta etiketi taşımalı; script-src unsafe-* içermemeli', () => {
+    const htmlFiles = [
+      path.join(ROOT_DIR, 'index.html'),
+      ...walkFiles(path.join(ROOT_DIR, 'projeler'), '.html'),
+      ...walkFiles(path.join(ROOT_DIR, 'notlar'), '.html'),
+    ];
+    assert.ok(htmlFiles.length > 1, 'HTML sayfaları bulunamadı');
+
+    const problems = [];
+    for (const file of htmlFiles) {
+      const rel = path.relative(ROOT_DIR, file);
+      const html = fs.readFileSync(file, 'utf8');
+      const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1];
+      if (!head) {
+        problems.push(`${rel}: <head> bulunamadı`);
+        continue;
+      }
+
+      const cspTag = head.match(/<meta\b[^>]*http-equiv\s*=\s*["']Content-Security-Policy["'][^>]*>/i)?.[0];
+      if (!cspTag) {
+        problems.push(`${rel}: CSP meta etiketi eksik`);
+      } else {
+        const policy = cspTag.match(/\bcontent\s*=\s*"([^"]*)"/i)?.[1] ?? cspTag.match(/\bcontent\s*=\s*'([^']*)'/i)?.[1];
+        if (!policy) {
+          problems.push(`${rel}: CSP content boş`);
+        } else {
+          const directives = new Map(
+            policy
+              .split(';')
+              .map((d) => d.trim().split(/\s+/))
+              .filter((parts) => parts[0])
+              .map(([name, ...values]) => [name.toLowerCase(), values]),
+          );
+          const scriptSources = directives.get('script-src') ?? directives.get('default-src');
+          if (!scriptSources) {
+            problems.push(`${rel}: CSP script-src (veya default-src) direktifi yok`);
+          }
+          for (const name of ['script-src', 'script-src-elem', 'script-src-attr', 'default-src']) {
+            const values = directives.get(name) ?? [];
+            for (const bad of ["'unsafe-inline'", "'unsafe-eval'"]) {
+              if (values.includes(bad) && (name !== 'default-src' || !directives.has('script-src'))) {
+                problems.push(`${rel}: ${name} içinde ${bad}`);
+              }
+            }
+          }
+        }
+      }
+
+      if (!/<meta\b[^>]*\bname\s*=\s*["']referrer["'][^>]*>/i.test(head)) {
+        problems.push(`${rel}: referrer meta etiketi eksik`);
+      }
+    }
+
+    assert.deepEqual(problems, [], `Güvenlik meta sorunları:\n${problems.join('\n')}`);
   });
 });

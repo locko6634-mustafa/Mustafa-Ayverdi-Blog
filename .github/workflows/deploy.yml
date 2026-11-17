@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -13,27 +16,91 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Run checks (syntax + smoke tests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done
+          node --test tests/smoke.test.mjs
+
+      - name: Validate deploy target
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SSH_USER}" ] || ! [[ "${SSH_USER}" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+            echo "::error::SERVER_USER boş veya geçersiz biçimde; deploy durduruldu."
+            exit 1
+          fi
+          if [ -z "${SSH_HOST}" ]; then
+            echo "::error::SERVER_HOST boş; deploy durduruldu."
+            exit 1
+          fi
+          if [ ! -f ./index.html ]; then
+            echo "::error::Kaynakta index.html yok; rsync --delete çalıştırılmayacak."
+            exit 1
+          fi
 
       - name: Deploy static files via rsync over SSH
+        shell: bash
         env:
           SSH_HOST: ${{ secrets.SERVER_HOST }}
           SSH_USER: ${{ secrets.SERVER_USER }}
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SSH_PORT: ${{ secrets.SERVER_PORT || '22' }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
+          (umask 077 && printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key)
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-          ssh -o IdentitiesOnly=yes -i ~/.ssh/deploy_key -p "$SSH_PORT" "${SSH_USER}@${SSH_HOST}" "mkdir -p /home/${SSH_USER}/mustafa-ayverdi-blog/site"
+          if [ -n "${SSH_KNOWN_HOSTS}" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::SERVER_KNOWN_HOSTS tanımlı değil; host anahtarı sabitlenmemiş, ssh-keyscan kullanılıyor."
+            scanned="$(ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" 2>/dev/null || true)"
+            if [ -z "${scanned}" ]; then
+              echo "::error::ssh-keyscan host anahtarı döndürmedi."
+              exit 1
+            fi
+            printf '%s\n' "$scanned" > ~/.ssh/known_hosts
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+          SSH_OPTS="-o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -i $HOME/.ssh/deploy_key -p ${SSH_PORT}"
+
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS "${SSH_USER}@${SSH_HOST}" "mkdir -p /home/${SSH_USER}/mustafa-ayverdi-blog/site"
 
           rsync -avz --delete \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='.agents' \
+            --exclude='.claude/' \
+            --exclude='node_modules/' \
             --exclude='tests' \
-            --exclude='gemini.md' \
-            -e "ssh -o IdentitiesOnly=yes -i ~/.ssh/deploy_key -p ${SSH_PORT}" \
+            --exclude='CLAUDE.md' \
+            --exclude='AGENT.md' \
+            --exclude='AGENTS.md' \
+            --exclude='*.sh' \
+            --exclude='.gitignore' \
+            -e "ssh ${SSH_OPTS}" \
             ./ "${SSH_USER}@${SSH_HOST}:/home/${SSH_USER}/mustafa-ayverdi-blog/site/"
+
+      - name: Clean up SSH key
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f ~/.ssh/deploy_key

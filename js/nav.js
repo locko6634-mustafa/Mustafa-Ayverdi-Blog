@@ -10,7 +10,11 @@ export function initNav() {
     return;
   }
 
-  const desktopQuery = window.matchMedia('(min-width: 901px)');
+  // matchMedia yoksa (eski tarayıcı/test ortamı) masaüstü değil kabul edilir.
+  const desktopQuery =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 901px)')
+      : null;
 
   const setOpen = (isOpen, { restoreFocus = false } = {}) => {
     toggle.setAttribute('aria-expanded', String(isOpen));
@@ -56,7 +60,9 @@ export function initNav() {
     }
   };
 
-  if (typeof desktopQuery.addEventListener === 'function') {
+  if (desktopQuery && typeof desktopQuery.addEventListener === 'function') {
     desktopQuery.addEventListener('change', handleMediaChange);
+  } else if (desktopQuery && typeof desktopQuery.addListener === 'function') {
+    desktopQuery.addListener(handleMediaChange);
   }
 }

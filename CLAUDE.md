@@ -23,4 +23,4 @@
 
 ## İletişim ve Doğrulama
 - **İletişim:** `mailto:locko6634@gmail.com`, `https://github.com/locko6634-mustafa`, `https://wa.me/905510653051` (LinkedIn hesabı henüz yok).
-- **Doğrulama Komutu:** `node --check js/*.js && node --test tests/smoke.test.mjs` (`8/8` test geçmeli).
+- **Doğrulama Komutu:** `(for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done) && node --test tests/smoke.test.mjs` (`13/13` test geçmeli).
