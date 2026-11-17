@@ -249,6 +249,59 @@ function siteUrlToLocalFile(url) {
   return path.join(ROOT_DIR, rel);
 }
 
+/** Arama motorlarına kapalı (noindex) olması beklenen sayfalar; sitemap ve paylaşım etiketlerinden muaftır. */
+const NOINDEX_PAGES = ['404.html'];
+
+/**
+ * Sayfanın <head> bölümünde robots meta etiketi noindex içeriyor mu?
+ * @param {string} html
+ * @returns {boolean}
+ */
+function hasNoindex(html) {
+  const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+  return findTags(head, ['meta']).some(
+    ({ attrs }) =>
+      (attrs.get('name') ?? '').trim().toLowerCase() === 'robots' &&
+      (attrs.get('content') ?? '').toLowerCase().split(/[\s,]+/).includes('noindex'),
+  );
+}
+
+/**
+ * JPEG dosyasının genişlik/yüksekliğini SOF (Start Of Frame) başlığından okur; bağımlılık gerektirmez.
+ * @param {Buffer} buf
+ * @returns {{ width: number, height: number } | null}
+ */
+function readJpegSize(buf) {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) {
+    return null;
+  }
+  // SOF0-SOF15; DHT (C4), JPG (C8) ve DAC (CC) SOF değildir.
+  const SOF_MARKERS = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+  let i = 2;
+  while (i + 4 <= buf.length) {
+    if (buf[i] !== 0xff) {
+      return null;
+    }
+    const marker = buf[i + 1];
+    if (marker === 0xff) {
+      i += 1; // dolgu baytı
+      continue;
+    }
+    const segLen = buf.readUInt16BE(i + 2);
+    if (SOF_MARKERS.has(marker)) {
+      if (i + 9 > buf.length) {
+        return null;
+      }
+      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    }
+    if (marker === 0xda || segLen < 2) {
+      return null; // tarama verisi başladı veya bozuk segment
+    }
+    i += 2 + segLen;
+  }
+  return null;
+}
+
 /** Yasaklı JS kalıpları (tüm js/ dosyalarına uygulanır). */
 const FORBIDDEN_JS_PATTERNS = [
   { name: 'innerHTML', regex: /\.innerHTML\b|\[\s*['"`]innerHTML['"`]\s*\]/ },
@@ -1063,7 +1116,12 @@ describe('HTML Güvenlik Başlıkları (meta)', () => {
 
     for (const file of htmlPages) {
       const rel = path.relative(ROOT_DIR, file);
-      const head = fs.readFileSync(file, 'utf8').match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1];
+      const html = fs.readFileSync(file, 'utf8');
+      if (hasNoindex(html)) {
+        // noindex sayfaların kümesi ayrı testte NOINDEX_PAGES ile birebir doğrulanır.
+        continue;
+      }
+      const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1];
       if (!head) {
         problems.push(`${rel}: <head> bulunamadı`);
         continue;
@@ -1141,7 +1199,10 @@ describe('SEO: sitemap.xml ve robots.txt', () => {
       fileToLoc.set(rel, loc);
     }
 
-    const htmlPages = walkFiles(ROOT_DIR, '.html').map((file) => path.relative(ROOT_DIR, file));
+    // noindex sayfalar (ör. 404.html) sitemap'e girmez; küme ayrı testte NOINDEX_PAGES ile kilitlenir.
+    const htmlPages = walkFiles(ROOT_DIR, '.html')
+      .filter((file) => !hasNoindex(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(ROOT_DIR, file));
     for (const rel of htmlPages) {
       const loc = fileToLoc.get(rel);
       if (!loc) {
@@ -1294,5 +1355,119 @@ describe('Yayın Beyaz Listesi (deploy ile site referansları uyumu)', () => {
       }
     }
     assert.deepEqual(problems, []);
+  });
+});
+
+describe('Özel 404 Sayfası', () => {
+  const file404 = path.join(ROOT_DIR, '404.html');
+
+  it('404.html kökte bulunmalı, noindex taşımalı; canonical ve og:* içermemeli', () => {
+    assert.ok(fs.existsSync(file404), '404.html kökte bulunamadı');
+    const html = fs.readFileSync(file404, 'utf8');
+    assert.ok(hasNoindex(html), '404.html <head> içinde robots noindex taşımalı');
+    const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+    const canonical = findTags(head, ['link']).filter(({ attrs }) => attrs.get('rel') === 'canonical');
+    assert.equal(canonical.length, 0, '404.html canonical içermemeli');
+    const og = findTags(head, ['meta']).filter(({ attrs }) => (attrs.get('property') ?? '').startsWith('og:'));
+    assert.equal(og.length, 0, '404.html og:* etiketi içermemeli');
+    const icon = findTags(head, ['link']).find(({ attrs }) => (attrs.get('rel') ?? '').split(/\s+/).includes('icon'));
+    assert.ok(icon, '404.html favicon <link rel="icon"> içermeli');
+  });
+
+  it('404.html içindeki tüm yerel yollar kök-mutlak olmalı ve var olan dosyalara işaret etmeli', () => {
+    const html = fs.readFileSync(file404, 'utf8');
+    const problems = [];
+    let localCount = 0;
+    for (const value of collectLinkValues(html)) {
+      const raw = value.trim();
+      if (isExternalOrHash(raw)) {
+        continue;
+      }
+      localCount += 1;
+      if (!raw.startsWith('/') || raw.startsWith('//')) {
+        problems.push(`kök-mutlak değil: "${raw}"`);
+        continue;
+      }
+      const resolved = resolveLocalRef(raw, ROOT_DIR);
+      if (!resolved || !fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+        problems.push(`dosya bulunamadı: "${raw}"`);
+      }
+    }
+    assert.ok(localCount > 0, '404.html içinde yerel bağlantı bulunamadı');
+    for (const required of ['/css/main.css', '/js/main.js', '/assets/img/favicon.svg', '/index.html']) {
+      assert.ok(collectLinkValues(html).some((v) => v.trim() === required), `404.html ${required} referansı içermeli`);
+    }
+    assert.deepEqual(problems, [], `404.html yol sorunları:\n${problems.join('\n')}`);
+  });
+
+  it("404.html sitemap.xml'de listelenmemeli", () => {
+    const locs = parseSitemap(fs.readFileSync(path.join(ROOT_DIR, 'sitemap.xml'), 'utf8')).map(({ loc }) => loc ?? '');
+    assert.deepEqual(
+      locs.filter((loc) => /\/404(\.html)?$/.test(loc)),
+      [],
+      'sitemap.xml 404 sayfasını içermemeli',
+    );
+  });
+
+  it('noindex taşıyan sayfalar yalnızca NOINDEX_PAGES listesindekiler olmalı', () => {
+    const noindex = walkFiles(ROOT_DIR, '.html')
+      .filter((file) => hasNoindex(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(ROOT_DIR, file))
+      .sort();
+    assert.deepEqual(noindex, [...NOINDEX_PAGES].sort());
+  });
+
+  it('deploy.yml dosya beyaz listesi 404.html içermeli', () => {
+    const { files } = parseDeployWhitelist(fs.readFileSync(path.join(ROOT_DIR, '.github/workflows/deploy.yml'), 'utf8'));
+    assert.ok(files.has('404.html'), 'deploy.yml "for f in ..." listesinde 404.html yok');
+  });
+});
+
+describe('Paylaşım Görseli Boyutları (og:image:width/height)', () => {
+  it('readJpegSize sentetik SOF başlığını doğru okumalı ve JPEG olmayanı reddetmeli', () => {
+    // SOI + APP0 (uzunluk 4, 2 bayt veri) + SOF2 (h=670, w=1200)
+    const sample = Buffer.from([
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xc2, 0x00, 0x11, 0x08, 0x02, 0x9e, 0x04, 0xb0, 0x03,
+    ]);
+    assert.deepEqual(readJpegSize(sample), { width: 1200, height: 670 });
+    assert.equal(readJpegSize(Buffer.from([0x89, 0x50, 0x4e, 0x47])), null);
+  });
+
+  it('og:image içeren her sayfa gerçek görsel boyutuyla eşleşen og:image:width/height taşımalı', () => {
+    const ORIGIN = `${SITE_ORIGIN}/`;
+    const problems = [];
+    let checked = 0;
+    for (const file of walkFiles(ROOT_DIR, '.html')) {
+      const rel = path.relative(ROOT_DIR, file);
+      const head = fs.readFileSync(file, 'utf8').match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+      const metas = findTags(head, ['meta']);
+      const metaValue = (key) =>
+        metas.find(({ attrs }) => (attrs.get('property') ?? '').trim() === key)?.attrs.get('content')?.trim() ?? '';
+      const image = metaValue('og:image');
+      if (!image) {
+        continue;
+      }
+      checked += 1;
+      if (!image.startsWith(ORIGIN)) {
+        problems.push(`${rel}: og:image ${ORIGIN} ile başlamalı`);
+        continue;
+      }
+      const local = path.join(ROOT_DIR, image.slice(ORIGIN.length));
+      const size = fs.existsSync(local) ? readJpegSize(fs.readFileSync(local)) : null;
+      if (!size) {
+        problems.push(`${rel}: og:image boyutu okunamadı (${path.relative(ROOT_DIR, local)})`);
+        continue;
+      }
+      const width = metaValue('og:image:width');
+      const height = metaValue('og:image:height');
+      if (width !== String(size.width)) {
+        problems.push(`${rel}: og:image:width "${width}" gerçek genişlik ${size.width} ile eşleşmeli`);
+      }
+      if (height !== String(size.height)) {
+        problems.push(`${rel}: og:image:height "${height}" gerçek yükseklik ${size.height} ile eşleşmeli`);
+      }
+    }
+    assert.ok(checked > 0, 'og:image içeren sayfa bulunamadı');
+    assert.deepEqual(problems, [], `og:image boyut sorunları:\n${problems.join('\n')}`);
   });
 });

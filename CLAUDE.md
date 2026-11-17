@@ -17,10 +17,11 @@
 ## Sayfa ve Klasör Haritası
 - `index.html` — Ana vitrin (Hero, 3'lü fayda bandı, örnek iş kartları, `#simulator` canlı deneyim sahnesi, Çözümler & S.S.S. akordiyonları, Tanışalım, Rehberler, CTA, Footer).
 - `projeler/{salonzeka,vitrinos,yesil-nesil}.html` — 2'li görsel galerili (`.visual-showcase-grid`) ürün vitrin sayfaları.
+- `404.html` — Kökte özel "sayfa bulunamadı" sayfası (`noindex`, kök-mutlak yollar, sitemap'te yok).
 - `notlar/{index,...}.html` — İşletme sahiplerine yönelik jargonsuz 4 rehber yazısı.
 - `assets/img/` — Her proje için `*-real.webp` ve `*-scene.webp` (sayfa görselleri) + paylaşım önizlemesi için küçültülmüş `*-scene.jpg` (`og:image`/`twitter:image`) + `favicon.svg` ("MA" monogramı, 9 sayfada `rel="icon"`).
 - Diğer: `robots.txt`, `sitemap.xml`, `tests/smoke.test.mjs`.
 
 ## İletişim ve Doğrulama
 - **İletişim:** `mailto:locko6634@gmail.com`, `https://github.com/locko6634-mustafa`, `https://wa.me/905510653051` (LinkedIn hesabı henüz yok).
-- **Doğrulama Komutu:** `(for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done) && node --test tests/smoke.test.mjs` (`29/29` test geçmeli).
+- **Doğrulama Komutu:** `(for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done) && node --test tests/smoke.test.mjs` (`36/36` test geçmeli).

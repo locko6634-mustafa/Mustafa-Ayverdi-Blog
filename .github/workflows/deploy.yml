@@ -115,7 +115,7 @@ jobs:
           STAGING="$(mktemp -d)"
           chmod 755 "${STAGING}"
           trap 'rm -rf "${STAGING}"' EXIT
-          for f in index.html robots.txt sitemap.xml; do
+          for f in index.html 404.html robots.txt sitemap.xml; do
             if [ ! -f "$f" ]; then
               echo "::error::Yayın dosyası eksik: $f"
               exit 1
@@ -138,6 +138,30 @@ jobs:
           rsync -avz --delete --delete-delay --delay-updates --max-delete=200 --filter='P /.well-known/' --chmod=D755,F644 \
             -e "${RSYNC_RSH}" \
             "${STAGING}/" "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
+
+      - name: Post-deploy health check
+        shell: bash
+        env:
+          SITE_URL: https://blog.n8n-mustafa.me
+        run: |
+          set -euo pipefail
+          check_status() {
+            local url="$1" expected="$2" code
+            if [ "${expected}" = "200" ]; then
+              code="$(curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null -w '%{http_code}' "${url}")"
+            else
+              # 404 beklenen yanıt; --fail burada hata sayar, bu yüzden yalnız durum kodu okunur
+              code="$(curl --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null -w '%{http_code}' "${url}" || true)"
+            fi
+            if [ "${code}" != "${expected}" ]; then
+              echo "::error::${url} beklenen ${expected} yerine ${code} döndürdü."
+              exit 1
+            fi
+            echo "${url} -> ${code}"
+          }
+          check_status "${SITE_URL}/" 200
+          check_status "${SITE_URL}/assets/img/salonzeka-scene.jpg" 200
+          check_status "${SITE_URL}/yok-boyle-sayfa-kontrol" 404
 
       - name: Clean up SSH key
         if: always()

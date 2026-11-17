@@ -88,7 +88,7 @@ try:
 except OSError:
     pass
 
-ALLOWED_FILES = {"index.html", "robots.txt", "sitemap.xml"}
+ALLOWED_FILES = {"index.html", "404.html", "robots.txt", "sitemap.xml"}
 ALLOWED_DIRS = {"css", "js", "assets", "notlar", "projeler"}
 
 class WhitelistHandler(SimpleHTTPRequestHandler):
