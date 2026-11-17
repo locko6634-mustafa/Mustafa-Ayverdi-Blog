@@ -148,9 +148,9 @@ function attachImageFallback(img) {
 
 /** Modüle göreli görsel yolu üretir (sayfa alt dizinde olsa da doğru çözülür). */
 const SIM_IMAGES = {
-  vitrinosScene: () => new URL('../assets/img/vitrinos-scene.jpg', import.meta.url).href,
-  vitrinosReal: () => new URL('../assets/img/vitrinos-real.png', import.meta.url).href,
-  yesilnesilReal: () => new URL('../assets/img/yesilnesil-real.png', import.meta.url).href,
+  vitrinosScene: () => new URL('../assets/img/vitrinos-scene.webp', import.meta.url).href,
+  vitrinosReal: () => new URL('../assets/img/vitrinos-real.webp', import.meta.url).href,
+  yesilnesilReal: () => new URL('../assets/img/yesilnesil-real.webp', import.meta.url).href,
 };
 
 function createEl(tag, className, text) {

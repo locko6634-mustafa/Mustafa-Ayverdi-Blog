@@ -18,7 +18,7 @@
 - `index.html` — Ana vitrin (Hero, 3'lü fayda bandı, örnek iş kartları, `#simulator` canlı deneyim sahnesi, Çözümler & S.S.S. akordiyonları, Tanışalım, Rehberler, CTA, Footer).
 - `projeler/{salonzeka,vitrinos,yesil-nesil}.html` — 2'li görsel galerili (`.visual-showcase-grid`) ürün vitrin sayfaları.
 - `notlar/{index,...}.html` — İşletme sahiplerine yönelik jargonsuz 4 rehber yazısı.
-- `assets/img/` — Her proje için `*-real.png` ve `*-scene.jpg` (paylaşım görseli `og:image`/`twitter:image` olarak `*-scene.jpg`) + `favicon.svg` ("MA" monogramı, 9 sayfada `rel="icon"`).
+- `assets/img/` — Her proje için `*-real.webp` ve `*-scene.webp` (sayfa görselleri) + paylaşım önizlemesi için küçültülmüş `*-scene.jpg` (`og:image`/`twitter:image`) + `favicon.svg` ("MA" monogramı, 9 sayfada `rel="icon"`).
 - Diğer: `robots.txt`, `sitemap.xml`, `tests/smoke.test.mjs`.
 
 ## İletişim ve Doğrulama
