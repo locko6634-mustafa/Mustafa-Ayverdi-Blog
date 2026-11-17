@@ -18,9 +18,9 @@
 - `index.html` — Ana vitrin (Hero, 3'lü fayda bandı, örnek iş kartları, `#simulator` canlı deneyim sahnesi, Çözümler & S.S.S. akordiyonları, Tanışalım, Rehberler, CTA, Footer).
 - `projeler/{salonzeka,vitrinos,yesil-nesil}.html` — 2'li görsel galerili (`.visual-showcase-grid`) ürün vitrin sayfaları.
 - `notlar/{index,...}.html` — İşletme sahiplerine yönelik jargonsuz 4 rehber yazısı.
-- `assets/img/` — Her proje için `*-real.png` ve `*-scene.jpg`.
+- `assets/img/` — Her proje için `*-real.png` ve `*-scene.jpg` (paylaşım görseli `og:image`/`twitter:image` olarak `*-scene.jpg`) + `favicon.svg` ("MA" monogramı, 9 sayfada `rel="icon"`).
 - Diğer: `robots.txt`, `sitemap.xml`, `tests/smoke.test.mjs`.
 
 ## İletişim ve Doğrulama
 - **İletişim:** `mailto:locko6634@gmail.com`, `https://github.com/locko6634-mustafa`, `https://wa.me/905510653051` (LinkedIn hesabı henüz yok).
-- **Doğrulama Komutu:** `(for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done) && node --test tests/smoke.test.mjs` (`18/18` test geçmeli).
+- **Doğrulama Komutu:** `(for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done) && node --test tests/smoke.test.mjs` (`20/20` test geçmeli).

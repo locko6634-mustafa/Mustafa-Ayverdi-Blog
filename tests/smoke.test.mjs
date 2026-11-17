@@ -284,6 +284,12 @@ describe('JS Modülleri ve Güvenlik Sözleşmesi', () => {
       },
       { name: 'document.write', regex: /document\.write\b/ },
       { name: 'eval()', regex: /\beval\s*\(/ },
+      { name: 'new Function()', regex: /\bnew\s+Function\s*\(/ },
+      {
+        name: 'string argümanlı setTimeout/setInterval',
+        regex: /\bset(?:Timeout|Interval)\s*\(\s*['"`]/,
+      },
+      { name: 'javascript: URL', regex: /javascript\s*:/i },
     ];
 
     for (const file of jsFiles) {
@@ -733,6 +739,82 @@ describe('HTML Güvenlik Başlıkları (meta)', () => {
         .map(([policy, pages]) => `- "${policy}" → ${pages.join(', ')}`)
         .join('\n')}`,
     );
+  });
+
+  it('HTML sayfalarında javascript: URL ve satır içi on* olay öznitelikleri bulunmamalı', () => {
+    assert.ok(htmlPages.length > 1, 'HTML sayfaları bulunamadı');
+    const urlAttrs = ['href', 'src', 'action', 'formaction', 'data', 'xlink:href', 'srcdoc'];
+    const problems = [];
+    for (const file of htmlPages) {
+      const rel = path.relative(ROOT_DIR, file);
+      for (const { name, attrs } of findTags(fs.readFileSync(file, 'utf8'))) {
+        for (const attr of urlAttrs) {
+          const value = (attrs.get(attr) ?? '').replace(/[\s\u0000-\u001f]/g, '').toLowerCase();
+          if (value.startsWith('javascript:')) {
+            problems.push(`${rel}: <${name} ${attr}> javascript: URL içeriyor`);
+          }
+        }
+        for (const attrName of attrs.keys()) {
+          if (/^on[a-z]+$/.test(attrName)) {
+            problems.push(`${rel}: <${name}> satır içi ${attrName} olay özniteliği içeriyor`);
+          }
+        }
+      }
+    }
+    assert.deepEqual(problems, [], `Yasaklı HTML kalıpları:\n${problems.join('\n')}`);
+  });
+
+  it('her sayfa favicon, og:* ve twitter:* paylaşım etiketlerini canonical ile tutarlı taşımalı', () => {
+    assert.ok(htmlPages.length > 1, 'HTML sayfaları bulunamadı');
+    const ORIGIN = 'https://mustafaayverdi.dev/';
+    const requiredOg = ['og:type', 'og:locale', 'og:title', 'og:description', 'og:url', 'og:image', 'og:image:alt'];
+    const requiredTw = ['twitter:card', 'twitter:title', 'twitter:description', 'twitter:image'];
+    const problems = [];
+
+    for (const file of htmlPages) {
+      const rel = path.relative(ROOT_DIR, file);
+      const head = fs.readFileSync(file, 'utf8').match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1];
+      if (!head) {
+        problems.push(`${rel}: <head> bulunamadı`);
+        continue;
+      }
+      const metas = findTags(head, ['meta']);
+      const links = findTags(head, ['link']);
+      const metaValue = (attr, key) =>
+        metas.find(({ attrs }) => (attrs.get(attr) ?? '').trim() === key)?.attrs.get('content')?.trim() ?? '';
+
+      for (const key of requiredOg) {
+        if (!metaValue('property', key)) problems.push(`${rel}: ${key} eksik`);
+      }
+      for (const key of requiredTw) {
+        if (!metaValue('name', key)) problems.push(`${rel}: ${key} eksik`);
+      }
+
+      const canonical = links.find(({ attrs }) => attrs.get('rel') === 'canonical')?.attrs.get('href') ?? '';
+      if (!canonical.startsWith(ORIGIN)) problems.push(`${rel}: canonical ${ORIGIN} ile başlamalı`);
+      if (metaValue('property', 'og:url') !== canonical) problems.push(`${rel}: og:url canonical ile aynı olmalı`);
+
+      for (const [attr, key] of [['property', 'og:image'], ['name', 'twitter:image']]) {
+        const url = metaValue(attr, key);
+        if (!url.startsWith(`${ORIGIN}assets/img/`)) {
+          problems.push(`${rel}: ${key} ${ORIGIN}assets/img/ altında mutlak URL olmalı`);
+          continue;
+        }
+        const local = path.join(ROOT_DIR, url.slice(ORIGIN.length));
+        if (!fs.existsSync(local)) problems.push(`${rel}: ${key} yerelde olmayan dosyaya işaret ediyor`);
+      }
+
+      const icon = links.find(({ attrs }) => (attrs.get('rel') ?? '').split(/\s+/).includes('icon'));
+      if (!icon) {
+        problems.push(`${rel}: favicon <link rel="icon"> eksik`);
+      } else {
+        if (icon.attrs.get('type') !== 'image/svg+xml') problems.push(`${rel}: favicon type image/svg+xml olmalı`);
+        const target = path.resolve(path.dirname(file), icon.attrs.get('href') ?? '');
+        if (!fs.existsSync(target)) problems.push(`${rel}: favicon dosyası bulunamadı`);
+      }
+    }
+
+    assert.deepEqual(problems, [], `Paylaşım/favicon sorunları:\n${problems.join('\n')}`);
   });
 });
 

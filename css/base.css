@@ -81,6 +81,11 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Sayfa başka bir sitenin çerçevesinde açıldıysa ve üst pencereye taşınamadıysa içeriği gösterme */
+  html.is-framed body {
+    visibility: hidden !important;
+  }
+
   ::selection {
     background-color: var(--lime);
     color: var(--ink);

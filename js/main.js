@@ -11,13 +11,22 @@ if (typeof document !== 'undefined') {
 }
 
 // Clickjacking için savunma derinliği: sayfa bir iframe içinde açıldıysa üst pencereye taşı.
-if (typeof window !== 'undefined') {
+// Taşıma engellenirse (sandbox'lı iframe vb.) içerik CSS ile gizli kalır (html.is-framed).
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  let framed = false;
   try {
-    if (window.top !== window.self) {
-      window.top.location.href = window.self.location.href;
-    }
+    framed = window.top !== window.self;
   } catch (error) {
-    // Çapraz köken / sandbox kısıtlarında üst pencereye erişilemez; sessizce devam et.
+    framed = true;
+  }
+  if (framed) {
+    // Önce gizle: bazı tarayıcılar engellenen yönlendirmede hata fırlatmadan sessizce durur.
+    document.documentElement.classList.add('is-framed');
+    try {
+      window.top.location.href = window.self.location.href;
+    } catch (error) {
+      // Üst pencere yönlendirilemedi; sayfa gizli kalır.
+    }
   }
 }
 

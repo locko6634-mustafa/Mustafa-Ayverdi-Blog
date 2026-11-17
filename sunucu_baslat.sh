@@ -47,9 +47,28 @@ except Exception:
 ' "$BIND_HOST" "$PORT" >/dev/null 2>&1
 }
 
+# Porttaki sunucu bu blogu mu servis ediyor? (index.html'deki canonical işaretine bakar; değerler argv ile geçer)
+SITE_MARKER='<link rel="canonical" href="https://mustafaayverdi.dev/">'
+serves_this_blog() {
+    "$PYTHON_CMD" -c '
+import sys, urllib.request
+url = "http://%s:%d/index.html" % (sys.argv[1], int(sys.argv[2]))
+try:
+    with urllib.request.urlopen(url, timeout=2) as r:
+        body = r.read(512 * 1024).decode("utf-8", "replace")
+except Exception:
+    sys.exit(1)
+sys.exit(0 if sys.argv[3] in body else 1)
+' "$BIND_HOST" "$PORT" "$SITE_MARKER" >/dev/null 2>&1
+}
+
 if port_listening; then
-    echo -e "${YELLOW}Port ${PORT} zaten kullanımda. Tarayıcıdan http://${BIND_HOST}:${PORT}/ adresini açabilir veya PORT=8080 ./sunucu_baslat.sh ile farklı port seçebilirsiniz.${NC}"
-    exit 0
+    if serves_this_blog; then
+        echo -e "${YELLOW}Blog sunucusu zaten çalışıyor: http://${BIND_HOST}:${PORT}/${NC}"
+        exit 0
+    fi
+    echo -e "${RED}Hata: Port ${PORT} başka bir uygulama tarafından kullanılıyor (bu blog yanıt vermiyor). Farklı port için: PORT=8080 ./sunucu_baslat.sh${NC}" >&2
+    exit 1
 fi
 
 # Yalnız yayınlanan dosyaları servis eden küçük sunucu (beyaz liste).
