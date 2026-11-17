@@ -853,17 +853,20 @@ const STAGE_BUILDERS = {
   yesilnesil: setupYesilNesilStage,
 };
 
+// Object.hasOwn Safari <15.4'te yok; aynı davranış eski tarayıcılarda da çalışsın.
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
 /**
  * Yalnız SIMULATOR_SCENARIOS'un kendi anahtarlarını kabul eder; `constructor`, `toString`
  * gibi prototip anahtarları ve string olmayan değerler null döner.
  * @param {unknown} key
  */
 export function getScenario(key) {
-  return typeof key === 'string' && Object.hasOwn(SIMULATOR_SCENARIOS, key) ? SIMULATOR_SCENARIOS[key] : null;
+  return typeof key === 'string' && hasOwn(SIMULATOR_SCENARIOS, key) ? SIMULATOR_SCENARIOS[key] : null;
 }
 
 function getStageBuilder(key) {
-  return typeof key === 'string' && Object.hasOwn(STAGE_BUILDERS, key) ? STAGE_BUILDERS[key] : null;
+  return typeof key === 'string' && hasOwn(STAGE_BUILDERS, key) ? STAGE_BUILDERS[key] : null;
 }
 
 /**

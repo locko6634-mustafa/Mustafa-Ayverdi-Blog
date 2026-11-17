@@ -134,7 +134,8 @@ jobs:
 
           ssh "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "mkdir -p '${REMOTE_DIR}'"
 
-          rsync -avz --delete --delete-delay --delay-updates --max-delete=200 --chmod=D755,F644 \
+          # Sunucuda elle konmuş /.well-known/ (ör. doğrulama dosyaları) --delete ile silinmesin
+          rsync -avz --delete --delete-delay --delay-updates --max-delete=200 --filter='P /.well-known/' --chmod=D755,F644 \
             -e "${RSYNC_RSH}" \
             "${STAGING}/" "${SSH_USER}@${SSH_HOST}:${REMOTE_DIR}/"
 

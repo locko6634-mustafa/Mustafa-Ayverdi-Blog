@@ -1206,3 +1206,93 @@ describe('Aşamalı Geliştirme Sözleşmesi (JS yoksa içerik görünür kalmal
     );
   });
 });
+
+// --- Yayın beyaz listesi: deploy.yml, sunucu_baslat.sh ve sitedeki referanslar aynı kümeyi kullanmalı ---
+
+const PRUNED_EXTENSIONS = ['.md', '.sh', '.pem', '.key', '.bak'];
+
+function parseDeployWhitelist(yml) {
+  const files = yml.match(/for f in ([\w. -]+); do/); // glob içeren "js/*.js" döngüsü hariç
+  const dirs = yml.match(/for d in ([\w. -]+); do/);
+  return {
+    files: new Set(files ? files[1].trim().split(/\s+/) : []),
+    dirs: new Set(dirs ? dirs[1].trim().split(/\s+/) : []),
+  };
+}
+
+function parsePythonSet(source, name) {
+  const m = source.match(new RegExp(`${name}\\s*=\\s*\\{([^}]*)\\}`));
+  return new Set(m ? Array.from(m[1].matchAll(/"([^"]+)"/g), (x) => x[1]) : []);
+}
+
+/** Kök dizine göreli yol canlıya gönderilen (budanmayan) beyaz listede mi? */
+function isPublishedPath(relPath, { files, dirs }) {
+  const parts = relPath.split(/[\\/]/);
+  if (parts.some((p) => p.startsWith('.') || p === '')) {
+    return false;
+  }
+  if (PRUNED_EXTENSIONS.some((ext) => relPath.endsWith(ext))) {
+    return false;
+  }
+  return parts.length === 1 ? files.has(parts[0]) : dirs.has(parts[0]);
+}
+
+describe('Yayın Beyaz Listesi (deploy ile site referansları uyumu)', () => {
+  const deploy = parseDeployWhitelist(fs.readFileSync(path.join(ROOT_DIR, '.github/workflows/deploy.yml'), 'utf8'));
+
+  it('deploy.yml ve sunucu_baslat.sh aynı dosya/dizin listesini kullanmalı', () => {
+    assert.ok(deploy.files.size > 0 && deploy.dirs.size > 0, 'deploy.yml beyaz listesi ayrıştırılamadı');
+    const script = fs.readFileSync(path.join(ROOT_DIR, 'sunucu_baslat.sh'), 'utf8');
+    assert.deepEqual([...parsePythonSet(script, 'ALLOWED_FILES')].sort(), [...deploy.files].sort());
+    assert.deepEqual([...parsePythonSet(script, 'ALLOWED_DIRS')].sort(), [...deploy.dirs].sort());
+  });
+
+  it('isPublishedPath beyaz liste dışını ve budanan dosyaları reddetmeli (sentetik)', () => {
+    const wl = { files: new Set(['index.html']), dirs: new Set(['css']) };
+    assert.equal(isPublishedPath('index.html', wl), true);
+    assert.equal(isPublishedPath('css/main.css', wl), true);
+    assert.equal(isPublishedPath('404.html', wl), false);
+    assert.equal(isPublishedPath('docs/x.png', wl), false);
+    assert.equal(isPublishedPath('css/notlar.md', wl), false);
+    assert.equal(isPublishedPath('css/.gizli', wl), false);
+  });
+
+  it('HTML, CSS ve sitemap içindeki tüm yerel hedefler canlıya gönderilen dosyalar arasında olmalı', () => {
+    const problems = [];
+    const check = (relSource, resolved) => {
+      let rel = path.relative(ROOT_DIR, resolved);
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        rel = path.join(rel, 'index.html');
+      }
+      if (!isPublishedPath(rel, deploy)) {
+        problems.push(`${relSource} -> ${rel} deploy beyaz listesinde değil`);
+      }
+    };
+
+    for (const htmlFile of walkFiles(ROOT_DIR, '.html')) {
+      const relHtml = path.relative(ROOT_DIR, htmlFile);
+      check('(sayfa)', htmlFile);
+      for (const value of collectLinkValues(fs.readFileSync(htmlFile, 'utf8'))) {
+        const resolved = resolveLocalRef(value, path.dirname(htmlFile));
+        if (resolved) {
+          check(relHtml, resolved);
+        }
+      }
+    }
+    for (const cssFile of walkFiles(path.join(ROOT_DIR, 'css'), '.css')) {
+      for (const value of collectCssUrls(fs.readFileSync(cssFile, 'utf8'))) {
+        const resolved = resolveLocalRef(value, path.dirname(cssFile));
+        if (resolved) {
+          check(path.relative(ROOT_DIR, cssFile), resolved);
+        }
+      }
+    }
+    for (const { loc } of parseSitemap(fs.readFileSync(path.join(ROOT_DIR, 'sitemap.xml'), 'utf8'))) {
+      if (loc && loc.startsWith(SITE_ORIGIN)) {
+        const rel = loc.slice(SITE_ORIGIN.length).replace(/^\//, '') || 'index.html';
+        check('sitemap.xml', path.join(ROOT_DIR, rel));
+      }
+    }
+    assert.deepEqual(problems, []);
+  });
+});
