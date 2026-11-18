@@ -125,7 +125,7 @@
     top: 0;
     z-index: var(--z-header);
     padding-block: 0.85rem;
-    background: var(--paper);
+    background: transparent;
   }
 
   .nav-card {
