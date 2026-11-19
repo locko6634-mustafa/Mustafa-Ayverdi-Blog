@@ -143,32 +143,33 @@
   .brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.65rem;
     min-height: 44px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    letter-spacing: -0.02em;
     color: var(--ink);
     flex-shrink: 0;
   }
 
-  .brand-mark {
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    border-radius: var(--radius-xs);
-    background-color: var(--ink);
-    color: var(--lime);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
+  .brand-name {
+    font-family: var(--font-sans);
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--ink);
+    white-space: nowrap;
   }
 
-  .brand-name {
-    font-weight: 600;
-    color: var(--ink);
+  .brand-name em {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1.08em;
+    letter-spacing: -0.015em;
+    color: var(--forest);
+    padding: 0 0.12em;
+    background-image: linear-gradient(var(--lime), var(--lime));
+    background-repeat: no-repeat;
+    background-size: 100% 45%;
+    background-position: 0 90%;
   }
 
   .nav-actions {
