@@ -1,0 +1,288 @@
+/* /kart — kartvizit QR sayfası (onaylı maket düzeni). Katman sırası main.css'te tanımlı; burada yalnız "sections" katmanına ekleme yapılır. */
+@layer sections {
+  .kart-page {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .kart {
+    width: 100%;
+    max-width: 480px;
+    margin-inline: auto;
+    padding: 2.25rem 1.25rem 0;
+    display: grid;
+    gap: 0.875rem;
+  }
+
+  /* Üst: ortalı editoryal yazı logosu (h1) + italik tanıtım cümlesi */
+  .kart-head {
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    padding-bottom: 0.75rem;
+  }
+
+  .kart-logo {
+    font-family: var(--font-sans);
+    font-size: clamp(2.2rem, 11.5vw, 3.1rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    padding-inline: 0.15rem;
+  }
+
+  .kart-logo em {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    color: var(--forest);
+    padding: 0 0.08em;
+    background-image: linear-gradient(var(--lime), var(--lime));
+    background-repeat: no-repeat;
+    background-size: 100% 40%;
+    background-position: 0 88%;
+  }
+
+  .kart-tagline {
+    margin-top: 0.75rem;
+    max-width: 18em;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1.125rem;
+    line-height: 1.4;
+    color: var(--forest);
+  }
+
+  /* Butonlar: hap biçimi, ikon + metin, dokunma hedefi >= 44px */
+  .kart-actions {
+    display: grid;
+    gap: 0.625rem;
+  }
+
+  .kart-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 44px;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: center;
+    transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  }
+
+  .kart-btn span {
+    white-space: nowrap;
+  }
+
+  .kart-icon {
+    width: 1.15em;
+    height: 1.15em;
+    flex-shrink: 0;
+  }
+
+  .kart-actions .kart-btn {
+    min-height: 48px;
+    font-size: 1.0625rem;
+  }
+
+  .kart-actions .kart-btn--solid {
+    min-height: 50px;
+  }
+
+  .kart-btn--solid {
+    background-color: var(--forest);
+    color: var(--white);
+  }
+
+  .kart-btn--solid:hover {
+    background-color: var(--forest-deep);
+  }
+
+  .kart-btn--outline {
+    background-color: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+  }
+
+  .kart-feature .kart-btn--outline {
+    border: 1px solid var(--line);
+  }
+
+  .kart-btn--outline:hover {
+    background-color: var(--white);
+    border-color: var(--ink);
+  }
+
+  .kart-btn--lime {
+    background-color: var(--lime);
+    color: var(--lime-ink);
+  }
+
+  .kart-btn--lime:hover {
+    background-color: var(--sage-surface);
+  }
+
+  /* Ürün kartları: aynı yapı; SalonZeka kalın, VitrinOS ince çerçeve */
+  .kart-feature {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--white);
+  }
+
+  .kart-feature--primary {
+    border: 2px solid var(--forest);
+  }
+
+  .kart-feature--secondary {
+    border: 1px solid var(--line);
+  }
+
+  .kart-feature-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .kart-card-title {
+    font-family: var(--font-sans);
+    font-size: 1.125rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .kart-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--lime);
+    color: var(--lime-ink);
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  /* Orijinal site ekran görüntüleri: kırpma yok, tam görünüm */
+  .kart-shot {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+  }
+
+  .kart-feature-text {
+    color: var(--ink);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+
+  .kart-feature-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem;
+  }
+
+  /* Yeşil Nesil: gri-mavi zemin; canlı siteye ve proje sayfasına iki buton */
+  .kart-ref {
+    display: grid;
+    justify-items: start;
+    gap: 0.35rem;
+    padding: 1rem 1rem 1.1rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--slate-surface);
+    color: var(--ink);
+  }
+
+  .kart-ref .kart-shot {
+    margin-top: 0.5rem;
+  }
+
+  /* Slate zeminde çerçeveli buton: beyaz dolgu + koyu yeşil kenar (kenar/zemin 8,0:1) */
+  .kart-ref .kart-btn--outline {
+    background-color: var(--white);
+    border: 1px solid var(--forest);
+  }
+
+  .kart-ref .kart-feature-actions {
+    justify-self: stretch;
+    margin-top: 0.5rem;
+  }
+
+  .kart-ref-label {
+    display: inline-flex;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--white);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* --forest / --slate-surface = 8,0:1 (--muted 4,04:1 kalıyordu) */
+  .kart-ref-meta {
+    font-size: 0.8125rem;
+    color: var(--forest);
+  }
+
+  /* Alt liste: üst çizgiyle ayrılmış satırlar */
+  .kart-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 0.25rem;
+  }
+
+  .kart-list li {
+    border-top: 1px solid var(--line);
+  }
+
+  .kart-list a {
+    display: flex;
+    align-items: center;
+    min-height: 46px;
+    padding-inline: 1rem;
+    font-size: 0.9375rem;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .kart-list a:hover {
+    color: var(--forest);
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+
+  .kart-foot {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 1.25rem;
+  }
+
+  .kart-foot a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  /* İki buton yan yana 370px altında sığmaz; alt alta dizilir */
+  @media (max-width: 369px) {
+    .kart-feature-actions {
+      grid-template-columns: 1fr;
+    }
+  }
+}

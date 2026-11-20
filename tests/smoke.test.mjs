@@ -270,7 +270,7 @@ function siteUrlToLocalFile(url) {
 }
 
 /** Arama motorlarına kapalı (noindex) olması beklenen sayfalar; sitemap ve paylaşım etiketlerinden muaftır. */
-const NOINDEX_PAGES = ['404.html'];
+const NOINDEX_PAGES = ['404.html', 'kart.html'];
 
 /**
  * Sayfanın <head> bölümünde robots meta etiketi noindex içeriyor mu?
@@ -1545,5 +1545,344 @@ describe('Paylaşım Görseli Boyutları (og:image:width/height)', () => {
     }
     assert.ok(checked > 0, 'og:image içeren sayfa bulunamadı');
     assert.deepEqual(problems, [], `og:image boyut sorunları:\n${problems.join('\n')}`);
+  });
+});
+
+// --- /kart: kartvizit QR sayfası sözleşmesi (Mustafa'nın onayladığı maket düzeni + 2026-11-20 ek kararları) ---
+
+describe('Kartvizit Sayfası (/kart)', () => {
+  const fileKart = path.join(ROOT_DIR, 'kart.html');
+  const fileVcf = path.join(ROOT_DIR, 'assets', 'mustafa-ayverdi.vcf');
+  // /kart için izinli iletişim: Mustafa bu sayfada iletisim@mustafaayverdi.dev adresini seçti (2026-11-20).
+  const ALLOWED_EMAIL = 'iletisim@mustafaayverdi.dev';
+  const ALLOWED_PHONE = '905510653051';
+  const ALLOWED_GITHUB = 'https://github.com/locko6634-mustafa';
+  const VITRINOS_DEMO = 'https://vitrinos.n8n-mustafa.me/';
+  const YESILNESIL_SITE = 'https://yesilnesilthegarden.com/';
+  const WA_MESSAGE = 'Merhaba, kartvizitinizden ulaşıyorum.';
+  const WA_HREF = `https://wa.me/${ALLOWED_PHONE}?text=${encodeURIComponent(WA_MESSAGE)}`;
+  const VCF_HREF = './assets/mustafa-ayverdi.vcf';
+  // İkon imzaları (inline SVG path başlangıçları): resmi WhatsApp glifi, kişi ekle, oynat, bilgi, dış bağlantı.
+  const ICON = {
+    whatsapp: 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967',
+    addContact: 'M19 8v6M16 11h6',
+    play: 'M10 8.5l5.5 3.5-5.5 3.5z',
+    info: 'M12 11v5',
+    external: 'M20 4l-9 9',
+  };
+
+  const readKart = () => fs.readFileSync(fileKart, 'utf8');
+  const anchors = (html) => findTags(html, ['a']).map(({ attrs }) => attrs);
+  /** Etiketleri ve script/style içeriğini atıp görünen metni döndürür. */
+  const visibleText = (html) =>
+    (html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? '')
+      .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ');
+  /** class listesinde verilen sınıfı taşıyan ilk öğenin iç HTML'i (iç içe aynı etiket olmadığı varsayılır). */
+  const blockByClass = (html, tag, cls) =>
+    html.match(new RegExp(`<${tag}\\b[^>]*class="[^"]*\\b${cls}(?![\\w-])[^"]*"[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'))?.[1];
+  /** aria-labelledby ile bağlı <section>: { attrs, inner } */
+  const sectionByLabel = (html, id) => {
+    const m = html.match(new RegExp(`<section\\b([^>]*\\baria-labelledby="${id}"[^>]*)>([\\s\\S]*?)<\\/section>`, 'i'));
+    return m ? { attrs: parseAttributes(m[1]), inner: m[2] } : null;
+  };
+  const textOf = (fragment) => (fragment ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  /** Bir parçadaki <a> öğeleri: nitelikler, görünen metin ve iç HTML (ikon denetimi için). */
+  const buttonsIn = (fragment) =>
+    Array.from((fragment ?? '').matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi), (m) => ({
+      attrs: parseAttributes(m[1]),
+      text: textOf(m[2]),
+      inner: m[2],
+    }));
+  /** Butonun iç HTML'i verilen imzayı taşıyan, aria-hidden inline SVG ikon içermeli. */
+  const assertIcon = (button, signature, label) => {
+    const svg = button.inner.match(/<svg\b([^>]*)>([\s\S]*?)<\/svg>/i);
+    assert.ok(svg, `${label}: inline SVG ikon yok`);
+    const attrs = parseAttributes(svg[1]);
+    assert.equal(attrs.get('aria-hidden'), 'true', `${label}: ikon aria-hidden="true" olmalı`);
+    assert.match(attrs.get('class') ?? '', /\bkart-icon\b/, `${label}: ikon .kart-icon sınıfı taşımalı`);
+    assert.ok(svg[2].includes(signature), `${label}: beklenen ikon (${signature}) değil`);
+  };
+  /** Ürün kartının yapısı: başlık satırı → görsel → açıklama → iki butonlu satır (bu sırayla). */
+  const assertFeatureOrder = (inner, label) => {
+    const order = ['kart-feature-head', '<img', 'kart-feature-text', 'kart-feature-actions'].map((k) => inner.indexOf(k));
+    assert.ok(order.every((i) => i !== -1), `${label}: başlık/görsel/açıklama/buton satırı eksik`);
+    assert.deepEqual([...order].sort((a, b) => a - b), order, `${label}: sıra başlık → görsel → açıklama → butonlar olmalı`);
+  };
+
+  it("kart.html kökte olmalı; lang=\"tr\", tek <h1>, noindex taşımalı, canonical içermemeli ve sitemap'te olmamalı", () => {
+    assert.ok(fs.existsSync(fileKart), 'kart.html kökte bulunamadı (/kart adresi kart.html dosyasına çözülür)');
+    const html = readKart();
+    assert.match(html, /<html\b[^>]*\blang="tr"/);
+    assert.equal(findTags(html, ['h1']).length, 1, 'kart.html tam 1 <h1> içermeli');
+    assert.ok(hasNoindex(html), 'kart.html robots noindex taşımalı');
+    const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+    assert.equal(
+      findTags(head, ['link']).filter(({ attrs }) => attrs.get('rel') === 'canonical').length,
+      0,
+      'noindex sayfa canonical taşımamalı',
+    );
+    const locs = parseSitemap(fs.readFileSync(path.join(ROOT_DIR, 'sitemap.xml'), 'utf8')).map(({ loc }) => loc ?? '');
+    assert.deepEqual(locs.filter((loc) => /\/kart(\.html)?\/?$/.test(loc)), []);
+    const og = findTags(head, ['meta']).find(({ attrs }) => attrs.get('property') === 'og:image')?.attrs.get('content');
+    assert.match(og ?? '', /\/assets\/img\/(salonzeka|vitrinos|yesilnesil)-real\.jpg$/, 'og:image orijinal *-real ekran görüntüsü olmalı');
+    // Site geneliyle (index.html) aynı twitter:* kalıbı; değerler og:* ile tutarlı olmalı.
+    const metas = findTags(head, ['meta']);
+    const metaBy = (attr, key) => metas.find(({ attrs }) => (attrs.get(attr) ?? '').trim() === key)?.attrs.get('content')?.trim();
+    assert.equal(metaBy('name', 'twitter:card'), 'summary_large_image');
+    assert.equal(metaBy('name', 'twitter:title'), metaBy('property', 'og:title'), 'twitter:title og:title ile aynı olmalı');
+    assert.equal(metaBy('name', 'twitter:description'), metaBy('property', 'og:description'), 'twitter:description og:description ile aynı olmalı');
+    assert.equal(metaBy('name', 'twitter:image'), og, 'twitter:image og:image ile aynı olmalı');
+    assert.equal(metaBy('name', 'twitter:image:alt'), metaBy('property', 'og:image:alt'), 'twitter:image:alt og:image:alt ile aynı olmalı');
+  });
+
+  it('üst bölüm: h1 editoryal yazı logosu (monogram/rozet/fotoğraf yok), isim bir kez, italik tanıtım cümlesi, şehir satırı yok', () => {
+    const html = readKart();
+    const head = blockByClass(html, 'header', 'kart-head');
+    assert.ok(head, '.kart-head bulunamadı');
+    const h1 = head.match(/<h1\b([^>]*)>([\s\S]*?)<\/h1>/i);
+    assert.ok(h1, 'üst bölümde h1 yok');
+    assert.match(parseAttributes(h1[1]).get('class') ?? '', /\bkart-logo\b/, 'h1 yazı logosu (.kart-logo) olmalı');
+    assert.equal(h1[2].trim(), 'Mustafa <em>Ayverdi</em>', 'logo "Mustafa" + <em>Ayverdi</em> biçiminde olmalı');
+    assert.equal(/<svg|<img|monogram|kart-avatar/i.test(head), false, 'üst bölümde monogram, rozet veya fotoğraf olmamalı');
+    assert.equal((visibleText(html).match(/Mustafa Ayverdi/g) ?? []).length, 1, 'isim sayfada yalnız bir kez (logo) yazılmalı');
+    assert.equal(textOf(blockByClass(head, 'p', 'kart-tagline')), 'İşletmeler için yapay zekâ otomasyonları geliştiriyorum.');
+    assert.equal(/İstanbul|yüz yüze/i.test(visibleText(html)), false, 'şehir/kurulum satırı olmamalı');
+  });
+
+  it('birincil eylem WhatsApp logolu koyu hap butonu, ikincisi kişi ekleme ikonlu ve download öznitelikli vCard (bu sırayla)', () => {
+    const html = readKart();
+    const buttons = buttonsIn(blockByClass(html, 'div', 'kart-actions'));
+    assert.equal(buttons.length, 2, 'eylem alanında tam 2 bağlantı olmalı');
+    const [wa, vcf] = buttons;
+    assert.deepEqual(buttons.map((b) => b.text), ["WhatsApp'tan yazın", 'Rehbere kaydet']);
+    assert.equal(wa.attrs.get('href'), WA_HREF, `WhatsApp bağlantısı birebir "${WA_HREF}" olmalı`);
+    assert.match(wa.attrs.get('class') ?? '', /\bkart-btn--solid\b/, 'WhatsApp butonu koyu (kart-btn--solid) olmalı');
+    assert.equal(wa.attrs.get('target'), '_blank');
+    assert.equal(wa.attrs.get('rel'), 'noopener noreferrer');
+    assertIcon(wa, ICON.whatsapp, 'WhatsApp butonu');
+    assert.match(wa.inner, /<svg\b[^>]*\bfill="currentColor"/, 'WhatsApp logosu koyu zeminde okunur kalmak için currentColor ile dolmalı');
+    assert.equal(vcf.attrs.get('href'), VCF_HREF);
+    assert.match(vcf.attrs.get('class') ?? '', /\bkart-btn--outline\b/);
+    assert.equal(vcf.attrs.get('download'), 'mustafa-ayverdi.vcf', 'Rehbere kaydet bağlantısı download özniteliği taşımalı');
+    assertIcon(vcf, ICON.addContact, 'Rehbere kaydet butonu');
+    const hrefs = anchors(html).map((a) => (a.get('href') ?? '').trim()).filter((h) => h !== '#main-content');
+    assert.equal(hrefs[0], WA_HREF, 'sayfadaki ilk içerik bağlantısı WhatsApp olmalı');
+  });
+
+  it('vCard 3.0 dosyası ad, unvan, telefon, e-posta ve site adresini CRLF satırlarla taşımalı', () => {
+    assert.ok(fs.existsSync(fileVcf), 'assets/mustafa-ayverdi.vcf bulunamadı');
+    const raw = fs.readFileSync(fileVcf, 'utf8');
+    assert.ok(raw.startsWith('BEGIN:VCARD\r\n'), 'vCard BEGIN:VCARD ile başlamalı');
+    assert.ok(raw.trimEnd().endsWith('END:VCARD'), 'vCard END:VCARD ile bitmeli');
+    assert.equal(/(^|[^\r])\n/.test(raw), false, 'vCard satır sonları CRLF olmalı');
+    const lines = raw.split('\r\n');
+    for (const expected of [
+      'VERSION:3.0',
+      'N:Ayverdi;Mustafa;;;',
+      'FN:Mustafa Ayverdi',
+      'TITLE:Yapay Zekâ & Otomasyon Geliştirici',
+      `TEL;TYPE=CELL:+${ALLOWED_PHONE}`,
+      `EMAIL;TYPE=INTERNET:${ALLOWED_EMAIL}`,
+      `URL:${SITE_ORIGIN}/`,
+    ]) {
+      assert.ok(lines.includes(expected), `vCard satırı eksik: ${expected}`);
+    }
+  });
+
+  it('kart.html ve vCard yalnız izinli iletişim adreslerini içermeli (LinkedIn, tel:, başka e-posta/numara yok)', () => {
+    const html = readKart();
+    const vcf = fs.readFileSync(fileVcf, 'utf8');
+    const problems = [];
+    for (const attrs of anchors(html)) {
+      const href = (attrs.get('href') ?? '').trim();
+      const lower = href.toLowerCase();
+      if (lower.startsWith('mailto:') && href !== `mailto:${ALLOWED_EMAIL}`) problems.push(`izinsiz e-posta: ${href}`);
+      if (lower.startsWith('tel:') || lower.startsWith('sms:')) problems.push(`izinsiz arama bağlantısı: ${href}`);
+      if (/wa\.me|whatsapp\.com/.test(lower) && !href.startsWith(`https://wa.me/${ALLOWED_PHONE}`)) {
+        problems.push(`izinsiz WhatsApp: ${href}`);
+      }
+      if (lower.includes('github.com') && href !== ALLOWED_GITHUB) problems.push(`izinsiz GitHub: ${href}`);
+      if (/linkedin|instagram|twitter\.com|x\.com|facebook/.test(lower)) problems.push(`izinsiz sosyal bağlantı: ${href}`);
+    }
+    // SVG path koordinatları sahte numara üretmesin: HTML'de görünen metin + href değerleri taranır.
+    const htmlSurface = `${visibleText(html)} ${anchors(html).map((a) => a.get('href') ?? '').join(' ')}`;
+    for (const [name, source] of [['kart.html', htmlSurface], ['vcf', vcf]]) {
+      for (const email of source.match(/[\w.+-]+@[\w-]+\.[\w.-]+/g) ?? []) {
+        if (email !== ALLOWED_EMAIL) problems.push(`${name}: izinsiz e-posta ${email}`);
+      }
+      for (const phone of source.match(/\+?\d[\d ]{9,}\d/g) ?? []) {
+        if (phone.replace(/\D/g, '') !== ALLOWED_PHONE) problems.push(`${name}: izinsiz numara ${phone}`);
+      }
+    }
+    assert.ok(html.includes(`href="mailto:${ALLOWED_EMAIL}"`), 'e-posta bağlantısı eksik');
+    assert.ok(html.includes(`href="${ALLOWED_GITHUB}"`), 'GitHub bağlantısı eksik');
+    assert.deepEqual(problems, [], `İletişim kuralı ihlalleri:\n${problems.join('\n')}`);
+  });
+
+  it('görünen metin teknik jargon ve demo numarası içermemeli', () => {
+    const text = visibleText(readKart());
+    const forbidden = [
+      'FIG.', '01 /', '02 /', '03 /', 'PostgreSQL', 'Prisma', 'MinIO', 'Vanilla', 'TOTP', 'n8n', 'API',
+      'webhook', 'workflow', 'veritabanı', 'altyapı', 'sunucu', 'backend', 'frontend', 'SaaS', 'LLM', 'prompt',
+    ];
+    const hits = forbidden.filter((term) => new RegExp(`(^|[^\\p{L}])${term.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}`, 'iu').test(text));
+    assert.deepEqual(hits, [], `kart.html yasaklı ifadeler: ${hits.join(', ')}`);
+  });
+
+  it('SalonZeka kartı: kalın çerçeve, "14 gün ücretsiz" rozeti, orijinal ekran görüntüsü, açıklama; "Demoyu dene" (oynat) ve "Nasıl çalışır" (bilgi) proje sayfasına gitmeli', () => {
+    const html = readKart();
+    const card = sectionByLabel(html, 'kart-salonzeka');
+    assert.ok(card, 'SalonZeka kartı bulunamadı');
+    assert.match(card.attrs.get('class') ?? '', /\bkart-feature\b/);
+    assert.match(card.attrs.get('class') ?? '', /\bkart-feature--primary\b/, 'SalonZeka kartı öne çıkan (kalın çerçeve) olmalı');
+    assert.ok(html.indexOf('aria-labelledby="kart-salonzeka"') < html.indexOf('aria-labelledby="kart-vitrinos"'), 'SalonZeka kartı VitrinOS kartından önce gelmeli');
+    assertFeatureOrder(card.inner, 'SalonZeka');
+    assert.equal(textOf(blockByClass(card.inner, 'h2', 'kart-card-title')), 'SalonZeka');
+    assert.equal(textOf(blockByClass(card.inner, 'span', 'kart-badge')), '14 gün ücretsiz', 'SalonZeka rozeti birebir "14 gün ücretsiz" olmalı');
+    const img = findTags(card.inner, ['img'])[0]?.attrs;
+    assert.ok(img, 'SalonZeka görseli yok');
+    assert.equal(img.get('src'), './assets/img/salonzeka-real.webp');
+    assert.equal(img.get('width'), '1024');
+    assert.equal(img.get('height'), '640');
+    assert.equal(img.get('alt'), 'SalonZeka tanıtım sayfası ekranı');
+    assert.notEqual(img.get('loading'), 'lazy', 'ilk karttaki SalonZeka görseli lazy olmamalı');
+    assert.equal(
+      textOf(blockByClass(card.inner, 'p', 'kart-feature-text')),
+      "Müşterileriniz WhatsApp'tan 7/24 randevu alsın, hatırlatmalar kendiliğinden gitsin.",
+    );
+    const buttons = buttonsIn(blockByClass(card.inner, 'div', 'kart-feature-actions'));
+    assert.deepEqual(buttons.map((b) => b.text), ['Demoyu dene', 'Nasıl çalışır']);
+    assert.match(buttons[0].attrs.get('class') ?? '', /\bkart-btn--lime\b/);
+    assert.match(buttons[1].attrs.get('class') ?? '', /\bkart-btn--outline\b/);
+    for (const b of buttons) {
+      assert.equal(b.attrs.get('href'), './projeler/salonzeka', `"${b.text}" proje sayfasına gitmeli`);
+    }
+    assertIcon(buttons[0], ICON.play, 'SalonZeka Demoyu dene');
+    assertIcon(buttons[1], ICON.info, 'SalonZeka Nasıl çalışır');
+    assert.equal(/randevu\.n8n-mustafa\.me/.test(html), false, 'esnafa açık SalonZeka demosu bağlantısı olmamalı');
+  });
+
+  it('VitrinOS kartı SalonZeka ile aynı yapıda: ince çerçeve, rozetsiz başlık, orijinal görsel, açıklama; "Demoyu dene" (oynat, yeni sekme) ve "Nasıl çalışır" (bilgi)', () => {
+    const html = readKart();
+    const card = sectionByLabel(html, 'kart-vitrinos');
+    assert.ok(card, 'VitrinOS kartı bulunamadı');
+    assert.match(card.attrs.get('class') ?? '', /\bkart-feature\b/);
+    assert.match(card.attrs.get('class') ?? '', /\bkart-feature--secondary\b/, 'VitrinOS kartı ince çerçeveli (secondary) olmalı');
+    assert.equal(/kart-feature--primary/.test(card.attrs.get('class') ?? ''), false);
+    assertFeatureOrder(card.inner, 'VitrinOS');
+    assert.equal(textOf(blockByClass(card.inner, 'h2', 'kart-card-title')), 'VitrinOS');
+    assert.equal(/kart-badge/.test(card.inner), false, 'VitrinOS kartında uydurma teklif rozeti olmamalı');
+    const img = findTags(card.inner, ['img'])[0]?.attrs;
+    assert.ok(img, 'VitrinOS görseli yok');
+    assert.equal(img.get('src'), './assets/img/vitrinos-real.webp');
+    assert.equal(img.get('width'), '1024');
+    assert.equal(img.get('height'), '640');
+    assert.equal(img.get('alt'), 'VitrinOS tanıtım sayfası ekranı');
+    assert.notEqual(img.get('loading'), 'lazy', 'VitrinOS görseli lazy olmamalı');
+    assert.equal(textOf(blockByClass(card.inner, 'p', 'kart-feature-text')), 'Ürünleriniz için yapay zekâ ile reklam görselleri.');
+    const buttons = buttonsIn(blockByClass(card.inner, 'div', 'kart-feature-actions'));
+    assert.deepEqual(buttons.map((b) => b.text), ['Demoyu dene', 'Nasıl çalışır']);
+    const [demo, how] = buttons;
+    assert.match(demo.attrs.get('class') ?? '', /\bkart-btn--lime\b/);
+    assert.equal(demo.attrs.get('href'), VITRINOS_DEMO);
+    assert.equal(demo.attrs.get('target'), '_blank');
+    assert.equal(demo.attrs.get('rel'), 'noopener noreferrer');
+    assertIcon(demo, ICON.play, 'VitrinOS Demoyu dene');
+    assert.equal(demo.inner.includes(ICON.external), false, 'VitrinOS Demoyu dene dış bağlantı ikonu taşımamalı (SalonZeka ile aynı oynat ikonu)');
+    assert.match(how.attrs.get('class') ?? '', /\bkart-btn--outline\b/);
+    assert.equal(how.attrs.get('href'), './projeler/vitrinos');
+    assertIcon(how, ICON.info, 'VitrinOS Nasıl çalışır');
+  });
+
+  it('Yeşil Nesil kartı bağlantı değil bölüm olmalı (iç içe bağlantı yok); orijinal görsel, "Ziyaret et" (lime, dış bağlantı, yeni sekme) ve "İşi inceleyin" (bilgi); alt liste ve altbilgi maketle aynı olmalı', () => {
+    const html = readKart();
+    assert.equal(/<a\b[^>]*class="kart-ref"/.test(html), false, 'Yeşil Nesil kartının tamamı bağlantı olmamalı (iç içe bağlantı)');
+    const card = sectionByLabel(html, 'kart-yesilnesil');
+    assert.ok(card, 'Yeşil Nesil kartı (<section aria-labelledby="kart-yesilnesil">) bulunamadı');
+    assert.match(card.attrs.get('class') ?? '', /\bkart-ref\b/);
+    assert.equal(textOf(blockByClass(card.inner, 'span', 'kart-ref-label')), 'Gerçek müşteri işi');
+    assert.equal(textOf(blockByClass(card.inner, 'h2', 'kart-card-title')), 'Yeşil Nesil The Garden');
+    assert.equal(textOf(blockByClass(card.inner, 'span', 'kart-ref-meta')), 'Mekân web sitesi · yayında');
+    const img = findTags(card.inner, ['img'])[0]?.attrs;
+    assert.ok(img, 'Yeşil Nesil görseli yok');
+    assert.equal(img.get('src'), './assets/img/yesilnesil-real.webp');
+    assert.equal(img.get('width'), '1024');
+    assert.equal(img.get('height'), '640');
+    assert.equal(img.get('alt'), 'Yeşil Nesil The Garden web sitesi ekranı');
+    assert.ok(card.inner.indexOf('<img') < card.inner.indexOf('kart-feature-actions'), 'butonlar görselden sonra gelmeli');
+    const buttons = buttonsIn(blockByClass(card.inner, 'div', 'kart-feature-actions'));
+    assert.deepEqual(buttons.map((b) => b.text), ['Ziyaret et', 'İşi inceleyin']);
+    const [visit, review] = buttons;
+    assert.match(visit.attrs.get('class') ?? '', /\bkart-btn--lime\b/, 'Ziyaret et diğer kartlardaki lime butonlarla aynı stilde olmalı');
+    assert.equal(visit.attrs.get('href'), YESILNESIL_SITE);
+    assert.equal(visit.attrs.get('target'), '_blank');
+    assert.equal(visit.attrs.get('rel'), 'noopener noreferrer');
+    assertIcon(visit, ICON.external, 'Yeşil Nesil Ziyaret et');
+    assert.match(review.attrs.get('class') ?? '', /\bkart-btn--outline\b/);
+    assert.equal(review.attrs.get('href'), './projeler/yesil-nesil');
+    assertIcon(review, ICON.info, 'Yeşil Nesil İşi inceleyin');
+
+    const rows = buttonsIn(blockByClass(html, 'ul', 'kart-list')).map((b) => [b.attrs.get('href'), b.text]);
+    assert.deepEqual(rows, [
+      ['./notlar/', 'Yazılarım'],
+      [ALLOWED_GITHUB, 'GitHub'],
+      [`mailto:${ALLOWED_EMAIL}`, ALLOWED_EMAIL],
+    ]);
+    assert.equal(textOf(blockByClass(html, 'footer', 'kart-foot')), 'mustafaayverdi.dev · 2026');
+  });
+
+  it('kart.html içindeki tüm SVG ikonlar aria-hidden olmalı; harici ikon kütüphanesi/görseli kullanılmamalı', () => {
+    const html = readKart();
+    const svgs = findTags(html, ['svg']);
+    assert.equal(svgs.length, 8, 'WhatsApp, kişi ekle, 2 oynat, 3 bilgi ve 1 dış bağlantı ikonu: tam 8 inline ikon beklenir');
+    const count = (sig) => html.split(sig).length - 1;
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(ICON).map(([k, sig]) => [k, count(sig)])),
+      { whatsapp: 1, addContact: 1, play: 2, info: 3, external: 1 },
+      'ikon dağılımı birebir olmalı',
+    );
+    for (const { attrs } of svgs) {
+      assert.equal(attrs.get('aria-hidden'), 'true');
+    }
+    assert.equal(/<(use|i)\b|\.svg"[^>]*class="kart-icon"/i.test(html), false, 'ikonlar inline olmalı');
+  });
+
+  it('kart.html deploy.yml ve sunucu_baslat.sh beyaz listesinde olmalı; vCard ve kart.css yayınlanan dizinlerde kalmalı', () => {
+    const wl = parseDeployWhitelist(fs.readFileSync(path.join(ROOT_DIR, '.github/workflows/deploy.yml'), 'utf8'));
+    assert.ok(wl.files.has('kart.html'), 'deploy.yml "for f in ..." listesinde kart.html yok');
+    const script = fs.readFileSync(path.join(ROOT_DIR, 'sunucu_baslat.sh'), 'utf8');
+    assert.ok(parsePythonSet(script, 'ALLOWED_FILES').has('kart.html'), 'sunucu_baslat.sh ALLOWED_FILES içinde kart.html yok');
+    for (const rel of ['kart.html', 'assets/mustafa-ayverdi.vcf', 'css/kart.css']) {
+      assert.ok(isPublishedPath(rel, wl), `${rel} yayın beyaz listesinde değil`);
+    }
+  });
+
+  it('kart.css yalnız "sections" katmanına yazmalı, renkleri tokenlardan almalı, odak çerçevesini kapatmamalı, görselleri kırpmamalı ve çerçeve önceliğini korumalı', () => {
+    const css = fs.readFileSync(path.join(ROOT_DIR, 'css', 'kart.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const layers = Array.from(css.matchAll(/@layer\s+([\w-]+)/g), (m) => m[1]);
+    assert.deepEqual(layers, ['sections']);
+    assert.deepEqual(css.match(/#[0-9a-f]{3,8}\b|rgba?\(/gi) ?? [], [], 'kart.css sabit renk yerine tokens.css değişkenlerini kullanmalı');
+    assert.equal(/outline\s*:\s*(none|0)\b/.test(css), false, 'kart.css odak çerçevesini kapatmamalı');
+    assert.equal(/object-fit|aspect-ratio|object-position/.test(css), false, 'orijinal ekran görüntüleri kırpılmadan tam gösterilmeli');
+    assert.match(css.match(/\.kart-feature--primary\s*\{([^}]*)\}/)?.[1] ?? '', /border:\s*2px solid var\(--forest\)/);
+    assert.match(css.match(/\.kart-feature--secondary\s*\{([^}]*)\}/)?.[1] ?? '', /border:\s*1px solid var\(--line\)/);
+    // Slate zeminli Yeşil Nesil kartı: alt satır --muted ile 4,04:1 kalıyordu (WCAG AA 4.5:1 altı); --forest 8,0:1.
+    assert.match(css.match(/\.kart-ref-meta\s*\{([^}]*)\}/)?.[1] ?? '', /color:\s*var\(--forest\)/, '.kart-ref-meta slate zeminde --forest olmalı');
+    const tokens = fs.readFileSync(path.join(ROOT_DIR, 'css', 'tokens.css'), 'utf8');
+    const hex = (name) => tokens.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, 'i'))?.[1];
+    const lum = (h) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (a, b) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+    assert.ok(ratio(hex('forest'), hex('slate-surface')) >= 4.5, '--forest / --slate-surface kontrastı en az 4.5:1 olmalı');
+    assert.ok(ratio(hex('muted'), hex('slate-surface')) < 4.5, 'sentetik kontrol: --muted / --slate-surface 4.5:1 altında ölçülmeli');
+    const refOutline = css.match(/\.kart-ref \.kart-btn--outline\s*\{([^}]*)\}/)?.[1] ?? '';
+    assert.match(refOutline, /background-color:\s*var\(--white\)/, 'slate zemindeki çerçeveli buton beyaz dolgulu olmalı');
+    assert.match(refOutline, /border:\s*1px solid var\(--forest\)/, 'slate zemindeki çerçeveli butonun kenarı --forest olmalı');
+    assert.ok(readKart().includes('href="./css/kart.css"'), 'kart.html kart.css bağlamalı');
   });
 });
