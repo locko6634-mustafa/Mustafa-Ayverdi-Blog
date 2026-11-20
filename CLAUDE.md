@@ -21,7 +21,8 @@
 - `notlar/{index,...}.html` — İşletme sahiplerine yönelik jargonsuz 4 rehber yazısı.
 - `assets/img/` — Her proje için `*-real.webp` ve `*-scene.webp` (sayfa görselleri) + paylaşım önizlemesi için küçültülmüş `*-scene.jpg` (`og:image`/`twitter:image`) + `favicon.svg` ("MA" monogramı, 9 sayfada `rel="icon"`).
 - Diğer: `robots.txt`, `sitemap.xml`, `tests/smoke.test.mjs`.
+- **Temiz URL:** İç bağlantılar, canonical/og:url ve sitemap `<loc>` adresleri `.html` uzantısız yazılır (`projeler/vitrinos`, index → `./`, `../`, `notlar/`); dosya adları `.html` kalır, sunucu nginx `try_files $uri $uri.html $uri/` ile çözer.
 
 ## İletişim ve Doğrulama
 - **İletişim:** `mailto:locko6634@gmail.com`, `https://github.com/locko6634-mustafa`, `https://wa.me/905510653051` (LinkedIn hesabı henüz yok).
-- **Doğrulama Komutu:** `(for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done) && node --test tests/smoke.test.mjs` (`36/36` test geçmeli).
+- **Doğrulama Komutu:** `(for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done) && node --test tests/smoke.test.mjs` (`38/38` test geçmeli).

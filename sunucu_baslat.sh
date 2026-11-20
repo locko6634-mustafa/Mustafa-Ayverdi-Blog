@@ -117,7 +117,16 @@ class WhitelistHandler(SimpleHTTPRequestHandler):
             return rel[0] in ALLOWED_FILES or rel[0] in ALLOWED_DIRS
         return rel[0] in ALLOWED_DIRS
 
+    def _clean_url(self):
+        # nginx try_files $uri $uri.html $uri/ eşdeğeri: /x yoksa ve /x.html varsa onu sun
+        split = urllib.parse.urlsplit(self.path)
+        if split.path.endswith("/") or os.path.exists(self.translate_path(split.path)):
+            return
+        if os.path.isfile(self.translate_path(split.path) + ".html"):
+            self.path = urllib.parse.urlunsplit(split._replace(path=split.path + ".html"))
+
     def send_head(self):
+        self._clean_url()
         if not self._allowed():
             self.send_error(404, "File not found")
             return None

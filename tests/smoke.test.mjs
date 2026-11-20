@@ -184,6 +184,8 @@ function collectCssUrls(css) {
 
 /**
  * Yerel bir referansı dosya yoluna çözer; harici/#/mailto/data: vb. ve boş yollar için null döner.
+ * Temiz URL'ler sunucudaki nginx `try_files $uri $uri.html $uri/` sırasıyla çözülür:
+ * dosya varsa kendisi, yoksa `x` → `x.html`; `dir/` dizin olarak döner (index.html kontrolü çağırana aittir).
  * @param {string} value
  * @param {string} baseDir
  * @returns {string | null}
@@ -197,7 +199,22 @@ function resolveLocalRef(value, baseDir) {
   if (!cleanUrl) {
     return null;
   }
-  return cleanUrl.startsWith('/') ? path.join(ROOT_DIR, cleanUrl.slice(1)) : path.resolve(baseDir, cleanUrl);
+  const resolved = cleanUrl.startsWith('/') ? path.join(ROOT_DIR, cleanUrl.slice(1)) : path.resolve(baseDir, cleanUrl);
+  if (!cleanUrl.endsWith('/') && !(fs.existsSync(resolved) && fs.statSync(resolved).isFile())) {
+    if (fs.existsSync(`${resolved}.html`)) {
+      return `${resolved}.html`;
+    }
+  }
+  return resolved;
+}
+
+/**
+ * Bir adres değerinin yol kısmı (fragment/query öncesi) .html ile bitiyor mu?
+ * @param {string} value
+ * @returns {boolean}
+ */
+function pathEndsWithHtml(value) {
+  return /\.html$/i.test(value.trim().split('#')[0].split('?')[0]);
 }
 
 /**
@@ -234,7 +251,8 @@ function parseSitemap(xml) {
 }
 
 /**
- * Site URL'sini yerel HTML dosya yoluna çözer ('/' ile biten → index.html); ORIGIN dışıysa null.
+ * Site URL'sini yerel HTML dosya yoluna çözer ('/' ile biten → index.html, uzantısız temiz URL → .html);
+ * ORIGIN dışıysa null.
  * @param {string} url
  * @returns {string | null}
  */
@@ -245,6 +263,8 @@ function siteUrlToLocalFile(url) {
   let rel = url.slice(SITE_ORIGIN.length + 1);
   if (rel === '' || rel.endsWith('/')) {
     rel += 'index.html';
+  } else if (!path.posix.extname(rel)) {
+    rel += '.html';
   }
   return path.join(ROOT_DIR, rel);
 }
@@ -461,7 +481,18 @@ describe('Test Yardımcıları (sentetik negatif kontroller)', () => {
     );
     assert.equal(siteUrlToLocalFile(`${SITE_ORIGIN}/`), path.join(ROOT_DIR, 'index.html'));
     assert.equal(siteUrlToLocalFile(`${SITE_ORIGIN}/notlar/`), path.join(ROOT_DIR, 'notlar', 'index.html'));
+    assert.equal(
+      siteUrlToLocalFile(`${SITE_ORIGIN}/projeler/salonzeka`),
+      path.join(ROOT_DIR, 'projeler', 'salonzeka.html'),
+    );
     assert.equal(siteUrlToLocalFile('https://baska.example/x.html'), null);
+    // Temiz URL çözümlemesi: x → x.html, dir/ → dizin (index.html çağıranda), fragment korunur.
+    assert.equal(resolveLocalRef('projeler/vitrinos#a', ROOT_DIR), path.join(ROOT_DIR, 'projeler', 'vitrinos.html'));
+    assert.equal(path.resolve(resolveLocalRef('/notlar/', ROOT_DIR)), path.join(ROOT_DIR, 'notlar'));
+    assert.equal(resolveLocalRef('./css/main.css', ROOT_DIR), path.join(ROOT_DIR, 'css', 'main.css'));
+    assert.equal(pathEndsWithHtml('../index.html#simulator'), true);
+    assert.equal(pathEndsWithHtml('../#simulator'), false);
+    assert.equal(pathEndsWithHtml('./vitrinos?x=.html'), false);
   });
 
   it('yasaklı JS kalıpları dolaylı eval/Function/innerHTML biçimlerini de yakalamalı', () => {
@@ -1350,11 +1381,53 @@ describe('Yayın Beyaz Listesi (deploy ile site referansları uyumu)', () => {
     }
     for (const { loc } of parseSitemap(fs.readFileSync(path.join(ROOT_DIR, 'sitemap.xml'), 'utf8'))) {
       if (loc && loc.startsWith(SITE_ORIGIN)) {
-        const rel = loc.slice(SITE_ORIGIN.length).replace(/^\//, '') || 'index.html';
-        check('sitemap.xml', path.join(ROOT_DIR, rel));
+        check('sitemap.xml', siteUrlToLocalFile(loc) ?? path.join(ROOT_DIR, loc.slice(SITE_ORIGIN.length)));
       }
     }
     assert.deepEqual(problems, []);
+  });
+});
+
+describe('Temiz URL (iç adreslerde .html uzantısı yok)', () => {
+  const isInternal = (value) => {
+    const raw = value.trim();
+    return raw.startsWith(`${SITE_ORIGIN}/`) || raw === SITE_ORIGIN || resolveLocalRef(raw, ROOT_DIR) !== null;
+  };
+
+  it('HTML dosyalarındaki iç href, canonical ve og:url/twitter:url değerleri .html ile bitmemeli', () => {
+    const problems = [];
+    let checked = 0;
+    for (const file of walkFiles(ROOT_DIR, '.html')) {
+      const rel = path.relative(ROOT_DIR, file);
+      const html = fs.readFileSync(file, 'utf8');
+      const values = [];
+      for (const { attrs } of findTags(html)) {
+        if (attrs.has('href')) {
+          values.push(attrs.get('href'));
+        }
+        const key = (attrs.get('property') ?? attrs.get('name') ?? '').trim();
+        if ((key === 'og:url' || key === 'twitter:url') && attrs.has('content')) {
+          values.push(attrs.get('content'));
+        }
+      }
+      for (const value of values) {
+        if (!isInternal(value)) {
+          continue;
+        }
+        checked += 1;
+        if (pathEndsWithHtml(value)) {
+          problems.push(`${rel}: "${value.trim()}" uzantısız (temiz URL) olmalı`);
+        }
+      }
+    }
+    assert.ok(checked > 0, 'Hiç iç adres denetlenmedi');
+    assert.deepEqual(problems, [], `.html uzantılı iç adresler:\n${problems.join('\n')}`);
+  });
+
+  it('sitemap.xml <loc> adresleri .html ile bitmemeli', () => {
+    const locs = parseSitemap(fs.readFileSync(path.join(ROOT_DIR, 'sitemap.xml'), 'utf8')).map(({ loc }) => loc ?? '');
+    assert.ok(locs.length > 0, 'sitemap.xml içinde <loc> bulunamadı');
+    assert.deepEqual(locs.filter((loc) => pathEndsWithHtml(loc)), []);
   });
 });
 
@@ -1388,13 +1461,16 @@ describe('Özel 404 Sayfası', () => {
         problems.push(`kök-mutlak değil: "${raw}"`);
         continue;
       }
-      const resolved = resolveLocalRef(raw, ROOT_DIR);
+      let resolved = resolveLocalRef(raw, ROOT_DIR);
+      if (resolved && fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        resolved = path.join(resolved, 'index.html');
+      }
       if (!resolved || !fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
         problems.push(`dosya bulunamadı: "${raw}"`);
       }
     }
     assert.ok(localCount > 0, '404.html içinde yerel bağlantı bulunamadı');
-    for (const required of ['/css/main.css', '/js/main.js', '/assets/img/favicon.svg', '/index.html']) {
+    for (const required of ['/css/main.css', '/js/main.js', '/assets/img/favicon.svg', '/']) {
       assert.ok(collectLinkValues(html).some((v) => v.trim() === required), `404.html ${required} referansı içermeli`);
     }
     assert.deepEqual(problems, [], `404.html yol sorunları:\n${problems.join('\n')}`);
