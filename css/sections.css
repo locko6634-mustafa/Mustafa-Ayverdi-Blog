@@ -1810,30 +1810,21 @@
     box-shadow: var(--shadow-sm);
   }
 
-  .monogram-mark,
   .monogram-glyph {
-    display: grid;
-    place-items: center;
-    width: 84px;
-    height: 84px;
-    border-radius: var(--radius-md);
-    background-color: var(--forest);
-    color: var(--white);
-    font-family: var(--font-sans);
-    font-size: 2.4rem;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    box-shadow: -6px 8px 0 var(--lime);
+    display: block;
+    width: 128px;
+    height: auto;
   }
 
-  .monogram-glyph em {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-weight: 400;
-    font-size: 1.05em;
-    letter-spacing: 0;
-    color: var(--lime);
+  .monogram-stripe {
+    fill: var(--lime);
+  }
+
+  .monogram-letters {
+    fill: var(--ink);
+    stroke: var(--ink);
+    stroke-width: 0.6;
+    stroke-linejoin: round;
   }
 
   .monogram-caption {
