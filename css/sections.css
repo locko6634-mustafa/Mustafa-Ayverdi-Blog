@@ -1801,6 +1801,8 @@
   }
 
   .monogram-card {
+    position: sticky;
+    top: 5.5rem;
     display: grid;
     gap: 1.25rem;
     padding: clamp(1.5rem, 3vw, 2.25rem);
@@ -2030,7 +2032,8 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .split-sticky {
+    .split-sticky,
+    .monogram-card {
       position: static;
     }
 
