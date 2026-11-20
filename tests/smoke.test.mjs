@@ -1557,7 +1557,8 @@ describe('Kartvizit Sayfası (/kart)', () => {
   const ALLOWED_EMAIL = 'iletisim@mustafaayverdi.dev';
   const ALLOWED_PHONE = '905510653051';
   const ALLOWED_GITHUB = 'https://github.com/locko6634-mustafa';
-  const VITRINOS_DEMO = 'https://vitrinos.n8n-mustafa.me/';
+  // İki "Demoyu dene" ana sayfadaki Canlı Deneyim bölümüne iner (js/simulator.js URL'den sahne seçimini desteklemiyor).
+  const LIVE_DEMO = './#simulator';
   const YESILNESIL_SITE = 'https://yesilnesilthegarden.com/';
   const WA_MESSAGE = 'Merhaba, kartvizitinizden ulaşıyorum.';
   const WA_HREF = `https://wa.me/${ALLOWED_PHONE}?text=${encodeURIComponent(WA_MESSAGE)}`;
@@ -1732,7 +1733,7 @@ describe('Kartvizit Sayfası (/kart)', () => {
     assert.deepEqual(hits, [], `kart.html yasaklı ifadeler: ${hits.join(', ')}`);
   });
 
-  it('SalonZeka kartı: kalın çerçeve, "14 gün ücretsiz" rozeti, orijinal ekran görüntüsü, açıklama; "Demoyu dene" (oynat) ve "Nasıl çalışır" (bilgi) proje sayfasına gitmeli', () => {
+  it('SalonZeka kartı: kalın çerçeve, "14 gün ücretsiz" rozeti, orijinal ekran görüntüsü, açıklama; "Demoyu dene" (oynat) Canlı Deneyim bölümüne, "Nasıl çalışır" (bilgi) proje sayfasına gitmeli', () => {
     const html = readKart();
     const card = sectionByLabel(html, 'kart-salonzeka');
     assert.ok(card, 'SalonZeka kartı bulunamadı');
@@ -1757,15 +1758,17 @@ describe('Kartvizit Sayfası (/kart)', () => {
     assert.deepEqual(buttons.map((b) => b.text), ['Demoyu dene', 'Nasıl çalışır']);
     assert.match(buttons[0].attrs.get('class') ?? '', /\bkart-btn--lime\b/);
     assert.match(buttons[1].attrs.get('class') ?? '', /\bkart-btn--outline\b/);
-    for (const b of buttons) {
-      assert.equal(b.attrs.get('href'), './projeler/salonzeka', `"${b.text}" proje sayfasına gitmeli`);
-    }
+    assert.equal(buttons[0].attrs.get('href'), LIVE_DEMO, 'SalonZeka Demoyu dene ana sayfadaki Canlı Deneyim bölümüne gitmeli');
+    assert.equal(buttons[0].attrs.has('target'), false, 'site içi demo bağlantısı aynı sekmede açılmalı');
+    assert.equal(buttons[1].attrs.get('href'), './projeler/salonzeka', 'Nasıl çalışır proje sayfasına gitmeli');
     assertIcon(buttons[0], ICON.play, 'SalonZeka Demoyu dene');
     assertIcon(buttons[1], ICON.info, 'SalonZeka Nasıl çalışır');
     assert.equal(/randevu\.n8n-mustafa\.me/.test(html), false, 'esnafa açık SalonZeka demosu bağlantısı olmamalı');
+    const indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf8');
+    assert.match(indexHtml, /<section\b[^>]*\bid="simulator"[^>]*\bdata-simulator\b/, 'index.html Canlı Deneyim bölümü id="simulator" ile korunmalı');
   });
 
-  it('VitrinOS kartı SalonZeka ile aynı yapıda: ince çerçeve, rozetsiz başlık, orijinal görsel, açıklama; "Demoyu dene" (oynat, yeni sekme) ve "Nasıl çalışır" (bilgi)', () => {
+  it('VitrinOS kartı SalonZeka ile aynı yapıda: ince çerçeve, rozetsiz başlık, orijinal görsel, açıklama; "Demoyu dene" (oynat, aynı sekmede Canlı Deneyim bölümü) ve "Nasıl çalışır" (bilgi)', () => {
     const html = readKart();
     const card = sectionByLabel(html, 'kart-vitrinos');
     assert.ok(card, 'VitrinOS kartı bulunamadı');
@@ -1787,9 +1790,9 @@ describe('Kartvizit Sayfası (/kart)', () => {
     assert.deepEqual(buttons.map((b) => b.text), ['Demoyu dene', 'Nasıl çalışır']);
     const [demo, how] = buttons;
     assert.match(demo.attrs.get('class') ?? '', /\bkart-btn--lime\b/);
-    assert.equal(demo.attrs.get('href'), VITRINOS_DEMO);
-    assert.equal(demo.attrs.get('target'), '_blank');
-    assert.equal(demo.attrs.get('rel'), 'noopener noreferrer');
+    assert.equal(demo.attrs.get('href'), LIVE_DEMO, 'VitrinOS Demoyu dene ana sayfadaki Canlı Deneyim bölümüne gitmeli');
+    assert.equal(demo.attrs.has('target'), false, 'VitrinOS Demoyu dene aynı sekmede açılmalı');
+    assert.equal(demo.attrs.has('rel'), false, 'site içi bağlantıda rel gerekmez');
     assertIcon(demo, ICON.play, 'VitrinOS Demoyu dene');
     assert.equal(demo.inner.includes(ICON.external), false, 'VitrinOS Demoyu dene dış bağlantı ikonu taşımamalı (SalonZeka ile aynı oynat ikonu)');
     assert.match(how.attrs.get('class') ?? '', /\bkart-btn--outline\b/);
