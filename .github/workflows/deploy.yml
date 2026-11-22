@@ -115,7 +115,7 @@ jobs:
           STAGING="$(mktemp -d)"
           chmod 755 "${STAGING}"
           trap 'rm -rf "${STAGING}"' EXIT
-          for f in index.html 404.html kart.html robots.txt sitemap.xml; do
+          for f in index.html 404.html kart.html iletisim.html gizlilik.html robots.txt sitemap.xml; do
             if [ ! -f "$f" ]; then
               echo "::error::Yayın dosyası eksik: $f"
               exit 1
@@ -162,6 +162,8 @@ jobs:
           check_status "${SITE_URL}/" 200
           check_status "${SITE_URL}/assets/img/salonzeka-scene.jpg" 200
           check_status "${SITE_URL}/kart" 200
+          check_status "${SITE_URL}/iletisim" 200
+          check_status "${SITE_URL}/gizlilik" 200
           check_status "${SITE_URL}/assets/mustafa-ayverdi.vcf" 200
           check_status "${SITE_URL}/yok-boyle-sayfa-kontrol" 404
 

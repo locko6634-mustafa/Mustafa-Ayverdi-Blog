@@ -13,7 +13,7 @@ export function initNav() {
   // matchMedia yoksa (eski tarayıcı/test ortamı) masaüstü değil kabul edilir.
   const desktopQuery =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(min-width: 901px)')
+      ? window.matchMedia('(min-width: 1025px)')
       : null;
 
   const setOpen = (isOpen, { restoreFocus = false } = {}) => {

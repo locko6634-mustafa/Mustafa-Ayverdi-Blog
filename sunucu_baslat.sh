@@ -48,7 +48,7 @@ except Exception:
 }
 
 # Porttaki sunucu bu blogu mu servis ediyor? (index.html'deki canonical işaretine bakar; değerler argv ile geçer)
-SITE_MARKER='<link rel="canonical" href="https://mustafaayverdi.dev/">'
+SITE_MARKER='<link rel="canonical" href="https://mustafaayverdi.com/">'
 serves_this_blog() {
     "$PYTHON_CMD" -c '
 import sys, urllib.request
@@ -88,7 +88,7 @@ try:
 except OSError:
     pass
 
-ALLOWED_FILES = {"index.html", "404.html", "kart.html", "robots.txt", "sitemap.xml"}
+ALLOWED_FILES = {"index.html", "404.html", "kart.html", "iletisim.html", "gizlilik.html", "robots.txt", "sitemap.xml"}
 ALLOWED_DIRS = {"css", "js", "assets", "notlar", "projeler"}
 
 class WhitelistHandler(SimpleHTTPRequestHandler):

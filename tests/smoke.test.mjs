@@ -9,7 +9,7 @@ import { SIMULATOR_SCENARIOS, getScenario } from '../js/simulator.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
-const SITE_ORIGIN = 'https://mustafaayverdi.dev';
+const SITE_ORIGIN = 'https://mustafaayverdi.com';
 
 function walkFiles(dir, extFilter, acc = []) {
   if (!fs.existsSync(dir)) {
@@ -1140,7 +1140,7 @@ describe('HTML Güvenlik Başlıkları (meta)', () => {
 
   it('her sayfa favicon, og:* ve twitter:* paylaşım etiketlerini canonical ile tutarlı taşımalı', () => {
     assert.ok(htmlPages.length > 1, 'HTML sayfaları bulunamadı');
-    const ORIGIN = 'https://mustafaayverdi.dev/';
+    const ORIGIN = 'https://mustafaayverdi.com/';
     const requiredOg = ['og:type', 'og:locale', 'og:title', 'og:description', 'og:url', 'og:image', 'og:image:alt'];
     const requiredTw = ['twitter:card', 'twitter:title', 'twitter:description', 'twitter:image'];
     const problems = [];
@@ -1553,8 +1553,8 @@ describe('Paylaşım Görseli Boyutları (og:image:width/height)', () => {
 describe('Kartvizit Sayfası (/kart)', () => {
   const fileKart = path.join(ROOT_DIR, 'kart.html');
   const fileVcf = path.join(ROOT_DIR, 'assets', 'mustafa-ayverdi.vcf');
-  // /kart için izinli iletişim: Mustafa bu sayfada iletisim@mustafaayverdi.dev adresini seçti (2026-11-20).
-  const ALLOWED_EMAIL = 'iletisim@mustafaayverdi.dev';
+  // /kart için izinli iletişim: Mustafa bu sayfada iletisim@mustafaayverdi.com adresini seçti (2026-11-20).
+  const ALLOWED_EMAIL = 'iletisim@mustafaayverdi.com';
   const ALLOWED_PHONE = '905510653051';
   const ALLOWED_GITHUB = 'https://github.com/locko6634-mustafa';
   // İki "Demoyu dene" ana sayfadaki Canlı Deneyim bölümüne iner (js/simulator.js URL'den sahne seçimini desteklemiyor).
@@ -1834,7 +1834,7 @@ describe('Kartvizit Sayfası (/kart)', () => {
       [ALLOWED_GITHUB, 'GitHub'],
       [`mailto:${ALLOWED_EMAIL}`, ALLOWED_EMAIL],
     ]);
-    assert.equal(textOf(blockByClass(html, 'footer', 'kart-foot')), 'mustafaayverdi.dev · 2026');
+    assert.equal(textOf(blockByClass(html, 'footer', 'kart-foot')), 'mustafaayverdi.com · 2026');
   });
 
   it('kart.html içindeki tüm SVG ikonlar aria-hidden olmalı; harici ikon kütüphanesi/görseli kullanılmamalı', () => {
@@ -1887,5 +1887,122 @@ describe('Kartvizit Sayfası (/kart)', () => {
     assert.match(refOutline, /background-color:\s*var\(--white\)/, 'slate zemindeki çerçeveli buton beyaz dolgulu olmalı');
     assert.match(refOutline, /border:\s*1px solid var\(--forest\)/, 'slate zemindeki çerçeveli butonun kenarı --forest olmalı');
     assert.ok(readKart().includes('href="./css/kart.css"'), 'kart.html kart.css bağlamalı');
+  });
+});
+
+describe('Meta İşletme Doğrulaması Hazırlığı', () => {
+  // Meta "Henüz kayıtlı değil" doğrulaması: işletme adı Mustafa Ayverdi, alternatif ad SalonZeka, alan adı mustafaayverdi.com.
+  const SITE_EMAIL = 'iletisim@mustafaayverdi.com';
+  const SITE_PHONE_TEL = 'tel:+905510653051';
+  const read = (rel) => fs.readFileSync(path.join(ROOT_DIR, rel), 'utf8');
+  const bodyText = (html) =>
+    (html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? '')
+      .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ');
+  const metaContent = (html, key) =>
+    findTags(html, ['meta']).find(({ attrs }) => attrs.get('property') === key || attrs.get('name') === key)?.attrs.get('content');
+  const indexablePages = walkFiles(ROOT_DIR, '.html')
+    .map((f) => path.relative(ROOT_DIR, f).split(path.sep).join('/'))
+    .filter((rel) => !rel.startsWith('tests/') && !NOINDEX_PAGES.includes(rel));
+
+  it('iletisim.html ve gizlilik.html kökte olmalı, tek <h1> taşımalı ve noindex olmamalı', () => {
+    for (const rel of ['index.html', 'iletisim.html', 'gizlilik.html']) {
+      assert.ok(fs.existsSync(path.join(ROOT_DIR, rel)), `${rel} yok`);
+      const html = read(rel);
+      assert.equal(findTags(html, ['h1']).length, 1, `${rel} tam 1 <h1> içermeli`);
+      assert.equal(hasNoindex(html), false, `${rel} noindex olmamalı (Meta tarayıcısı okuyabilmeli)`);
+    }
+  });
+
+  it('ana sayfa, iletişim ve gizlilik sayfalarında og:title/description/url/image doğru olmalı', () => {
+    const expected = { 'index.html': '/', 'iletisim.html': '/iletisim', 'gizlilik.html': '/gizlilik' };
+    for (const [rel, urlPath] of Object.entries(expected)) {
+      const html = read(rel);
+      assert.equal(metaContent(html, 'og:url'), `${SITE_ORIGIN}${urlPath}`, `${rel} og:url`);
+      assert.ok(metaContent(html, 'og:title')?.includes('Mustafa Ayverdi'), `${rel} og:title "Mustafa Ayverdi" içermeli`);
+      assert.ok((metaContent(html, 'og:description') ?? '').length > 30, `${rel} og:description boş/kısa`);
+      assert.match(metaContent(html, 'og:image') ?? '', new RegExp(`^${SITE_ORIGIN}/assets/img/.+\.jpg$`), `${rel} og:image`);
+    }
+  });
+
+  it('iletişim sayfası işletme adını, SalonZeka ilişkisini, alan adı e-postasını ve telefonu göstermeli; ev adresi olmamalı', () => {
+    const html = read('iletisim.html');
+    const text = bodyText(html);
+    assert.ok(text.includes('Mustafa Ayverdi'), 'Mustafa Ayverdi adı görünmüyor');
+    assert.ok(text.includes("SalonZeka'nın geliştiricisi ve sağlayıcısı"), 'SalonZeka ilişkisi yazmıyor');
+    assert.ok(html.includes(`href="mailto:${SITE_EMAIL}"`) && text.includes(SITE_EMAIL), 'iletisim@ e-postası yok');
+    assert.ok(html.includes(`href="${SITE_PHONE_TEL}"`), 'telefon bağlantısı yok');
+    assert.doesNotMatch(text, /\b(mah\.|mahalle|sokak|sk\.|cadde|cad\.|apt|daire|no:)/i, 'sayfada açık adres olmamalı');
+  });
+
+  it('ana sayfa ve SalonZeka sayfası SalonZeka\'nın Mustafa Ayverdi tarafından geliştirildiğini açıkça söylemeli', () => {
+    assert.ok(bodyText(read('index.html')).includes("SalonZeka'nın geliştiricisi ve sağlayıcısı benim"), 'ana sayfada sahiplik cümlesi yok');
+    assert.ok(
+      bodyText(read('projeler/salonzeka.html')).includes('SalonZeka, Mustafa Ayverdi tarafından geliştirilen ve sunulan bir hizmettir.'),
+      'SalonZeka sayfasında sahiplik cümlesi yok',
+    );
+  });
+
+  it('gizlilik politikası onaylı başlıkları ve dürüst veri beyanını içermeli', () => {
+    const text = bodyText(read('gizlilik.html'));
+    for (const phrase of ['Veri sorumlusu', 'Sitede form, üyelik veya giriş yok', 'takip çerezi yok', 'Sunucu kayıtları', 'KVKK', SITE_EMAIL]) {
+      assert.ok(text.toLowerCase().includes(phrase.toLowerCase()), `gizlilik metninde eksik: ${phrase}`);
+    }
+  });
+
+  it('indekslenen her sayfa ana menüde ve mobil menüde İletişim, alt bilgide İletişim ve Gizlilik bağlantısı taşımalı', () => {
+    const problems = [];
+    for (const rel of indexablePages) {
+      const html = read(rel);
+      const navLinks = html.match(/<div class="nav-links">([\s\S]*?)<\/div>/)?.[1] ?? '';
+      const drawer = html.match(/<div id="mobile-nav"[\s\S]*?<\/header>/)?.[0] ?? '';
+      const footer = html.match(/<footer class="site-footer">([\s\S]*?)<\/footer>/)?.[1] ?? '';
+      if (!/href="(\.\/|\.\.\/|\/)iletisim"[^>]*>İletişim</.test(navLinks)) problems.push(`${rel}: ana menüde İletişim yok`);
+      if (!/href="(\.\/|\.\.\/|\/)iletisim"[^>]*>İletişim</.test(drawer)) problems.push(`${rel}: mobil menüde İletişim yok`);
+      if (!/href="(\.\/|\.\.\/|\/)iletisim">İletişim</.test(footer)) problems.push(`${rel}: alt bilgide İletişim yok`);
+      if (!/href="(\.\/|\.\.\/|\/)gizlilik">Gizlilik Politikası</.test(footer)) problems.push(`${rel}: alt bilgide Gizlilik yok`);
+    }
+    assert.deepEqual(problems, [], problems.join('\n'));
+  });
+
+  it('robots.txt Meta tarayıcılarını (facebookexternalhit, Facebot) engellememeli', () => {
+    const groups = [];
+    let current = null;
+    for (const raw of read('robots.txt').split(/\r?\n/)) {
+      const line = raw.replace(/#.*/, '').trim();
+      const m = line.match(/^([a-z-]+)\s*:\s*(.*)$/i);
+      if (!m) continue;
+      const key = m[1].toLowerCase();
+      if (key === 'user-agent') {
+        if (!current || current.rules.length) groups.push((current = { agents: [], rules: [] }));
+        current.agents.push(m[2].toLowerCase());
+      } else if (current) {
+        current.rules.push([key, m[2]]);
+      }
+    }
+    for (const bot of ['facebookexternalhit', 'facebot']) {
+      const group = groups.find((g) => g.agents.includes(bot)) ?? groups.find((g) => g.agents.includes('*'));
+      assert.ok(group, `${bot} için geçerli kural grubu yok`);
+      const blocked = group.rules.some(([k, v]) => k === 'disallow' && ['/', '/iletisim', '/gizlilik'].includes(v.trim()));
+      assert.equal(blocked, false, `${bot} robots.txt ile engelleniyor`);
+    }
+  });
+
+  it('yayın dosyalarında .dev alan adı ve eski gmail adresi kalmamalı', () => {
+    const files = [
+      ...walkFiles(ROOT_DIR, '.html'),
+      path.join(ROOT_DIR, 'robots.txt'),
+      path.join(ROOT_DIR, 'sitemap.xml'),
+      path.join(ROOT_DIR, 'assets', 'mustafa-ayverdi.vcf'),
+    ];
+    const problems = [];
+    for (const f of files) {
+      const s = fs.readFileSync(f, 'utf8');
+      if (s.includes('mustafaayverdi.dev')) problems.push(`${path.relative(ROOT_DIR, f)}: mustafaayverdi.dev`);
+      if (s.includes('locko6634@gmail.com')) problems.push(`${path.relative(ROOT_DIR, f)}: gmail adresi`);
+    }
+    assert.deepEqual(problems, [], problems.join('\n'));
   });
 });
