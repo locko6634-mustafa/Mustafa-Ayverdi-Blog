@@ -22,7 +22,7 @@
 - `gizlilik.html` (`/gizlilik`) — Mustafa'nın 2026-11-22'de onayladığı gizlilik politikası (form/analitik/çerez yok, sunucu kayıtları, e-posta Gmail, WhatsApp Meta, `ma-motion`, KVKK md. 11). Metin onaysız değiştirilmez; alt bilgide bağlantılı.
 - `404.html` — Kökte özel "sayfa bulunamadı" sayfası (`noindex`, kök-mutlak yollar, sitemap'te yok).
 - `notlar/{index,...}.html` — İşletme sahiplerine yönelik jargonsuz 4 rehber yazısı.
-- `assets/img/` — Her proje için `*-real.webp` ve `*-scene.webp` (sayfa görselleri) + paylaşım önizlemesi için küçültülmüş `*-scene.jpg` (`og:image`/`twitter:image`) + `salonzeka-real.jpg` (yalnız `/kart` og:image) + `favicon.svg` ("MA" monogramı, tüm sayfalarda `rel="icon"`).
+- `assets/img/` — Her proje için `*-real.webp` ve `*-scene.webp` (sayfa görselleri) + paylaşım önizlemesi için küçültülmüş `*-scene.jpg` (`og:image`/`twitter:image`) + `salonzeka-real.jpg` (yalnız `/kart` og:image) + `og-ana-sayfa.jpg` (1200×630, canlı ana sayfanın hero ekran görüntüsü; ana sayfa, `/iletisim`, `/gizlilik`, `notlar/` paylaşım görseli; Mustafa 2026-11-22: link önizlemesi AI sahne görseli değil sayfanın kendisi olmalı; tasarım değişirse Chrome headless `--force-prefers-reduced-motion --window-size=1520,796 --force-device-scale-factor=2` ile yeniden çekilip 1200×630'a küçültülür) + `favicon.svg` ("MA" monogramı, tüm sayfalarda `rel="icon"`).
 - Diğer: `robots.txt`, `sitemap.xml`, `tests/smoke.test.mjs`.
 - **Temiz URL:** İç bağlantılar, canonical/og:url ve sitemap `<loc>` adresleri `.html` uzantısız yazılır (`projeler/vitrinos`, index → `./`, `../`, `notlar/`); dosya adları `.html` kalır, sunucu nginx `try_files $uri $uri.html $uri/` ile çözer.
 
