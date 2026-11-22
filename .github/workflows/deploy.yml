@@ -142,7 +142,7 @@ jobs:
       - name: Post-deploy health check
         shell: bash
         env:
-          SITE_URL: https://blog.n8n-mustafa.me
+          SITE_URL: https://mustafaayverdi.com
         run: |
           set -euo pipefail
           check_status() {
