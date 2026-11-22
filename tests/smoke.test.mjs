@@ -1299,7 +1299,7 @@ describe('Aşamalı Geliştirme Sözleşmesi (JS yoksa içerik görünür kalmal
   });
 });
 
-// --- Yayın beyaz listesi: deploy.yml, sunucu_baslat.sh ve sitedeki referanslar aynı kümeyi kullanmalı ---
+// --- Yayın beyaz listesi: deploy.yml, yerel_sunucu.py ve sitedeki referanslar aynı kümeyi kullanmalı ---
 
 const PRUNED_EXTENSIONS = ['.md', '.sh', '.pem', '.key', '.bak'];
 
@@ -1332,9 +1332,9 @@ function isPublishedPath(relPath, { files, dirs }) {
 describe('Yayın Beyaz Listesi (deploy ile site referansları uyumu)', () => {
   const deploy = parseDeployWhitelist(fs.readFileSync(path.join(ROOT_DIR, '.github/workflows/deploy.yml'), 'utf8'));
 
-  it('deploy.yml ve sunucu_baslat.sh aynı dosya/dizin listesini kullanmalı', () => {
+  it('deploy.yml ve yerel_sunucu.py aynı dosya/dizin listesini kullanmalı', () => {
     assert.ok(deploy.files.size > 0 && deploy.dirs.size > 0, 'deploy.yml beyaz listesi ayrıştırılamadı');
-    const script = fs.readFileSync(path.join(ROOT_DIR, 'sunucu_baslat.sh'), 'utf8');
+    const script = fs.readFileSync(path.join(ROOT_DIR, 'yerel_sunucu.py'), 'utf8');
     assert.deepEqual([...parsePythonSet(script, 'ALLOWED_FILES')].sort(), [...deploy.files].sort());
     assert.deepEqual([...parsePythonSet(script, 'ALLOWED_DIRS')].sort(), [...deploy.dirs].sort());
   });
@@ -1853,11 +1853,11 @@ describe('Kartvizit Sayfası (/kart)', () => {
     assert.equal(/<(use|i)\b|\.svg"[^>]*class="kart-icon"/i.test(html), false, 'ikonlar inline olmalı');
   });
 
-  it('kart.html deploy.yml ve sunucu_baslat.sh beyaz listesinde olmalı; vCard ve kart.css yayınlanan dizinlerde kalmalı', () => {
+  it('kart.html deploy.yml ve yerel_sunucu.py beyaz listesinde olmalı; vCard ve kart.css yayınlanan dizinlerde kalmalı', () => {
     const wl = parseDeployWhitelist(fs.readFileSync(path.join(ROOT_DIR, '.github/workflows/deploy.yml'), 'utf8'));
     assert.ok(wl.files.has('kart.html'), 'deploy.yml "for f in ..." listesinde kart.html yok');
-    const script = fs.readFileSync(path.join(ROOT_DIR, 'sunucu_baslat.sh'), 'utf8');
-    assert.ok(parsePythonSet(script, 'ALLOWED_FILES').has('kart.html'), 'sunucu_baslat.sh ALLOWED_FILES içinde kart.html yok');
+    const script = fs.readFileSync(path.join(ROOT_DIR, 'yerel_sunucu.py'), 'utf8');
+    assert.ok(parsePythonSet(script, 'ALLOWED_FILES').has('kart.html'), 'yerel_sunucu.py ALLOWED_FILES içinde kart.html yok');
     for (const rel of ['kart.html', 'assets/mustafa-ayverdi.vcf', 'css/kart.css']) {
       assert.ok(isPublishedPath(rel, wl), `${rel} yayın beyaz listesinde değil`);
     }
