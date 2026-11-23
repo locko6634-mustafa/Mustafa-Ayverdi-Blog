@@ -221,7 +221,7 @@ function buildWhatsAppShell() {
   const shell = createEl('div', 'sim-wa-shell');
 
   const header = createEl('div', 'sim-wa-header');
-  const avatar = createEl('div', 'sim-wa-avatar', 'SZ');
+  const avatar = createEl('div', 'sim-wa-avatar', 'RZ');
   const headInfo = createEl('div', 'sim-wa-head-info');
   const titleEl = createEl('div', 'sim-wa-title', 'RandevuZeka Asistan');
   const statusEl = createEl('div', 'sim-wa-status', 'çevrimiçi');
