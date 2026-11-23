@@ -450,7 +450,7 @@
     min-height: 290px;
   }
 
-  /* SalonZeka: WhatsApp & Takvim */
+  /* RandevuZeka: WhatsApp & Takvim */
   .sim-chat {
     display: grid;
     gap: 0.7rem;
@@ -599,7 +599,7 @@
     font-weight: 600;
   }
 
-  /* SalonZeka: Gerçekçi WhatsApp & Randevu Paneli */
+  /* RandevuZeka: Gerçekçi WhatsApp & Randevu Paneli */
   .sim-wa-shell {
     display: flex;
     flex-direction: column;

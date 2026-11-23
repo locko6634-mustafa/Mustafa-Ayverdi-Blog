@@ -130,7 +130,7 @@
     background-color: var(--sage-surface);
   }
 
-  /* Ürün kartları: aynı yapı; SalonZeka kalın, VitrinOS ince çerçeve */
+  /* Ürün kartları: aynı yapı; RandevuZeka kalın, VitrinOS ince çerçeve */
   .kart-feature {
     display: grid;
     gap: 0.75rem;

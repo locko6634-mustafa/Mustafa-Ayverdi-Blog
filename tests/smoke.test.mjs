@@ -482,8 +482,8 @@ describe('Test Yardımcıları (sentetik negatif kontroller)', () => {
     assert.equal(siteUrlToLocalFile(`${SITE_ORIGIN}/`), path.join(ROOT_DIR, 'index.html'));
     assert.equal(siteUrlToLocalFile(`${SITE_ORIGIN}/notlar/`), path.join(ROOT_DIR, 'notlar', 'index.html'));
     assert.equal(
-      siteUrlToLocalFile(`${SITE_ORIGIN}/projeler/salonzeka`),
-      path.join(ROOT_DIR, 'projeler', 'salonzeka.html'),
+      siteUrlToLocalFile(`${SITE_ORIGIN}/projeler/randevuzeka`),
+      path.join(ROOT_DIR, 'projeler', 'randevuzeka.html'),
     );
     assert.equal(siteUrlToLocalFile('https://baska.example/x.html'), null);
     // Temiz URL çözümlemesi: x → x.html, dir/ → dizin (index.html çağıranda), fragment korunur.
@@ -595,8 +595,8 @@ describe('JS Modülleri ve Güvenlik Sözleşmesi', () => {
 });
 
 describe('Simülatör Veri Bütünlüğü', () => {
-  it('salonzeka, vitrinos ve yesilnesil senaryoları eksiksiz 4 adımlı olmalı', () => {
-    const keys = ['salonzeka', 'vitrinos', 'yesilnesil'];
+  it('randevuzeka, vitrinos ve yesilnesil senaryoları eksiksiz 4 adımlı olmalı', () => {
+    const keys = ['randevuzeka', 'vitrinos', 'yesilnesil'];
     for (const key of keys) {
       const scenario = SIMULATOR_SCENARIOS[key];
       assert.ok(scenario, `Eksik senaryo: ${key}`);
@@ -632,7 +632,7 @@ describe('Simülatör Anahtar Sertleştirmesi (prototip anahtarları)', () => {
   });
 
   it('initSimulator prototip anahtarlı sekmede TypeError fırlatmamalı ve geçerli senaryoya düşmeli', async () => {
-    const tabs = ['constructor', 'salonzeka', 'toString'].map(
+    const tabs = ['constructor', 'randevuzeka', 'toString'].map(
       (key) => new FakeElement({ 'data-sim-tab': key }),
     );
     tabs[0].classList.add('is-active');
@@ -671,7 +671,7 @@ describe('Simülatör Anahtar Sertleştirmesi (prototip anahtarları)', () => {
     try {
       const { initSimulator } = await importJs('simulator.js');
       assert.doesNotThrow(() => initSimulator());
-      assert.equal(tabs[1].getAttribute('tabindex'), '0', 'geçersiz aktif anahtarda salonzeka seçilmeli');
+      assert.equal(tabs[1].getAttribute('tabindex'), '0', 'geçersiz aktif anahtarda randevuzeka seçilmeli');
       assert.equal(tabs[0].getAttribute('tabindex'), '-1');
       assert.doesNotThrow(() => tabs[0].dispatch('click'));
       assert.doesNotThrow(() => tabs[2].dispatch('click'));
@@ -752,7 +752,7 @@ describe('HTML Sözleşme ve Link Kontrolleri', () => {
     const indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf8');
 
     assert.match(indexHtml, /\bdata-simulator\b/);
-    for (const key of ['salonzeka', 'vitrinos', 'yesilnesil']) {
+    for (const key of ['randevuzeka', 'vitrinos', 'yesilnesil']) {
       assert.match(indexHtml, new RegExp(`\\bdata-sim-tab="${key}"`));
     }
     assert.match(indexHtml, /\bdata-sim-left\b/);
@@ -1628,7 +1628,7 @@ describe('Kartvizit Sayfası (/kart)', () => {
     const locs = parseSitemap(fs.readFileSync(path.join(ROOT_DIR, 'sitemap.xml'), 'utf8')).map(({ loc }) => loc ?? '');
     assert.deepEqual(locs.filter((loc) => /\/kart(\.html)?\/?$/.test(loc)), []);
     const og = findTags(head, ['meta']).find(({ attrs }) => attrs.get('property') === 'og:image')?.attrs.get('content');
-    assert.match(og ?? '', /\/assets\/img\/(salonzeka|vitrinos|yesilnesil)-real\.jpg$/, 'og:image orijinal *-real ekran görüntüsü olmalı');
+    assert.match(og ?? '', /\/assets\/img\/(randevuzeka|vitrinos|yesilnesil)-real\.jpg$/, 'og:image orijinal *-real ekran görüntüsü olmalı');
     // Site geneliyle (index.html) aynı twitter:* kalıbı; değerler og:* ile tutarlı olmalı.
     const metas = findTags(head, ['meta']);
     const metaBy = (attr, key) => metas.find(({ attrs }) => (attrs.get(attr) ?? '').trim() === key)?.attrs.get('content')?.trim();
@@ -1733,23 +1733,23 @@ describe('Kartvizit Sayfası (/kart)', () => {
     assert.deepEqual(hits, [], `kart.html yasaklı ifadeler: ${hits.join(', ')}`);
   });
 
-  it('SalonZeka kartı: kalın çerçeve, "14 gün ücretsiz" rozeti, orijinal ekran görüntüsü, açıklama; "Demoyu dene" (oynat) Canlı Deneyim bölümüne, "Nasıl çalışır" (bilgi) proje sayfasına gitmeli', () => {
+  it('RandevuZeka kartı: kalın çerçeve, "14 gün ücretsiz" rozeti, orijinal ekran görüntüsü, açıklama; "Demoyu dene" (oynat) Canlı Deneyim bölümüne, "Nasıl çalışır" (bilgi) proje sayfasına gitmeli', () => {
     const html = readKart();
-    const card = sectionByLabel(html, 'kart-salonzeka');
-    assert.ok(card, 'SalonZeka kartı bulunamadı');
+    const card = sectionByLabel(html, 'kart-randevuzeka');
+    assert.ok(card, 'RandevuZeka kartı bulunamadı');
     assert.match(card.attrs.get('class') ?? '', /\bkart-feature\b/);
-    assert.match(card.attrs.get('class') ?? '', /\bkart-feature--primary\b/, 'SalonZeka kartı öne çıkan (kalın çerçeve) olmalı');
-    assert.ok(html.indexOf('aria-labelledby="kart-salonzeka"') < html.indexOf('aria-labelledby="kart-vitrinos"'), 'SalonZeka kartı VitrinOS kartından önce gelmeli');
-    assertFeatureOrder(card.inner, 'SalonZeka');
-    assert.equal(textOf(blockByClass(card.inner, 'h2', 'kart-card-title')), 'SalonZeka');
-    assert.equal(textOf(blockByClass(card.inner, 'span', 'kart-badge')), '14 gün ücretsiz', 'SalonZeka rozeti birebir "14 gün ücretsiz" olmalı');
+    assert.match(card.attrs.get('class') ?? '', /\bkart-feature--primary\b/, 'RandevuZeka kartı öne çıkan (kalın çerçeve) olmalı');
+    assert.ok(html.indexOf('aria-labelledby="kart-randevuzeka"') < html.indexOf('aria-labelledby="kart-vitrinos"'), 'RandevuZeka kartı VitrinOS kartından önce gelmeli');
+    assertFeatureOrder(card.inner, 'RandevuZeka');
+    assert.equal(textOf(blockByClass(card.inner, 'h2', 'kart-card-title')), 'RandevuZeka');
+    assert.equal(textOf(blockByClass(card.inner, 'span', 'kart-badge')), '14 gün ücretsiz', 'RandevuZeka rozeti birebir "14 gün ücretsiz" olmalı');
     const img = findTags(card.inner, ['img'])[0]?.attrs;
-    assert.ok(img, 'SalonZeka görseli yok');
-    assert.equal(img.get('src'), './assets/img/salonzeka-real.webp');
+    assert.ok(img, 'RandevuZeka görseli yok');
+    assert.equal(img.get('src'), './assets/img/randevuzeka-real.webp');
     assert.equal(img.get('width'), '1024');
     assert.equal(img.get('height'), '640');
-    assert.equal(img.get('alt'), 'SalonZeka tanıtım sayfası ekranı');
-    assert.notEqual(img.get('loading'), 'lazy', 'ilk karttaki SalonZeka görseli lazy olmamalı');
+    assert.equal(img.get('alt'), 'RandevuZeka tanıtım sayfası ekranı');
+    assert.notEqual(img.get('loading'), 'lazy', 'ilk karttaki RandevuZeka görseli lazy olmamalı');
     assert.equal(
       textOf(blockByClass(card.inner, 'p', 'kart-feature-text')),
       "Müşterileriniz WhatsApp'tan 7/24 randevu alsın, hatırlatmalar kendiliğinden gitsin.",
@@ -1758,17 +1758,17 @@ describe('Kartvizit Sayfası (/kart)', () => {
     assert.deepEqual(buttons.map((b) => b.text), ['Demoyu dene', 'Nasıl çalışır']);
     assert.match(buttons[0].attrs.get('class') ?? '', /\bkart-btn--lime\b/);
     assert.match(buttons[1].attrs.get('class') ?? '', /\bkart-btn--outline\b/);
-    assert.equal(buttons[0].attrs.get('href'), LIVE_DEMO, 'SalonZeka Demoyu dene ana sayfadaki Canlı Deneyim bölümüne gitmeli');
+    assert.equal(buttons[0].attrs.get('href'), LIVE_DEMO, 'RandevuZeka Demoyu dene ana sayfadaki Canlı Deneyim bölümüne gitmeli');
     assert.equal(buttons[0].attrs.has('target'), false, 'site içi demo bağlantısı aynı sekmede açılmalı');
-    assert.equal(buttons[1].attrs.get('href'), './projeler/salonzeka', 'Nasıl çalışır proje sayfasına gitmeli');
-    assertIcon(buttons[0], ICON.play, 'SalonZeka Demoyu dene');
-    assertIcon(buttons[1], ICON.info, 'SalonZeka Nasıl çalışır');
-    assert.equal(/randevu\.n8n-mustafa\.me/.test(html), false, 'esnafa açık SalonZeka demosu bağlantısı olmamalı');
+    assert.equal(buttons[1].attrs.get('href'), './projeler/randevuzeka', 'Nasıl çalışır proje sayfasına gitmeli');
+    assertIcon(buttons[0], ICON.play, 'RandevuZeka Demoyu dene');
+    assertIcon(buttons[1], ICON.info, 'RandevuZeka Nasıl çalışır');
+    assert.equal(/randevu\.n8n-mustafa\.me/.test(html), false, 'esnafa açık RandevuZeka demosu bağlantısı olmamalı');
     const indexHtml = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf8');
     assert.match(indexHtml, /<section\b[^>]*\bid="simulator"[^>]*\bdata-simulator\b/, 'index.html Canlı Deneyim bölümü id="simulator" ile korunmalı');
   });
 
-  it('VitrinOS kartı SalonZeka ile aynı yapıda: ince çerçeve, rozetsiz başlık, orijinal görsel, açıklama; "Demoyu dene" (oynat, aynı sekmede Canlı Deneyim bölümü) ve "Nasıl çalışır" (bilgi)', () => {
+  it('VitrinOS kartı RandevuZeka ile aynı yapıda: ince çerçeve, rozetsiz başlık, orijinal görsel, açıklama; "Demoyu dene" (oynat, aynı sekmede Canlı Deneyim bölümü) ve "Nasıl çalışır" (bilgi)', () => {
     const html = readKart();
     const card = sectionByLabel(html, 'kart-vitrinos');
     assert.ok(card, 'VitrinOS kartı bulunamadı');
@@ -1794,7 +1794,7 @@ describe('Kartvizit Sayfası (/kart)', () => {
     assert.equal(demo.attrs.has('target'), false, 'VitrinOS Demoyu dene aynı sekmede açılmalı');
     assert.equal(demo.attrs.has('rel'), false, 'site içi bağlantıda rel gerekmez');
     assertIcon(demo, ICON.play, 'VitrinOS Demoyu dene');
-    assert.equal(demo.inner.includes(ICON.external), false, 'VitrinOS Demoyu dene dış bağlantı ikonu taşımamalı (SalonZeka ile aynı oynat ikonu)');
+    assert.equal(demo.inner.includes(ICON.external), false, 'VitrinOS Demoyu dene dış bağlantı ikonu taşımamalı (RandevuZeka ile aynı oynat ikonu)');
     assert.match(how.attrs.get('class') ?? '', /\bkart-btn--outline\b/);
     assert.equal(how.attrs.get('href'), './projeler/vitrinos');
     assertIcon(how, ICON.info, 'VitrinOS Nasıl çalışır');
@@ -1891,7 +1891,7 @@ describe('Kartvizit Sayfası (/kart)', () => {
 });
 
 describe('Meta İşletme Doğrulaması Hazırlığı', () => {
-  // Meta "Henüz kayıtlı değil" doğrulaması: işletme adı Mustafa Ayverdi, alternatif ad SalonZeka, alan adı mustafaayverdi.com.
+  // Meta "Henüz kayıtlı değil" doğrulaması: işletme adı Mustafa Ayverdi, alternatif ad RandevuZeka, alan adı mustafaayverdi.com.
   const SITE_EMAIL = 'iletisim@mustafaayverdi.com';
   const SITE_PHONE_TEL = 'tel:+905510653051';
   const read = (rel) => fs.readFileSync(path.join(ROOT_DIR, rel), 'utf8');
@@ -1927,21 +1927,21 @@ describe('Meta İşletme Doğrulaması Hazırlığı', () => {
     }
   });
 
-  it('iletişim sayfası işletme adını, SalonZeka ilişkisini, alan adı e-postasını ve telefonu göstermeli; ev adresi olmamalı', () => {
+  it('iletişim sayfası işletme adını, RandevuZeka ilişkisini, alan adı e-postasını ve telefonu göstermeli; ev adresi olmamalı', () => {
     const html = read('iletisim.html');
     const text = bodyText(html);
     assert.ok(text.includes('Mustafa Ayverdi'), 'Mustafa Ayverdi adı görünmüyor');
-    assert.ok(text.includes("SalonZeka'nın geliştiricisi ve sağlayıcısı"), 'SalonZeka ilişkisi yazmıyor');
+    assert.ok(text.includes("RandevuZeka'nın geliştiricisi ve sağlayıcısı"), 'RandevuZeka ilişkisi yazmıyor');
     assert.ok(html.includes(`href="mailto:${SITE_EMAIL}"`) && text.includes(SITE_EMAIL), 'iletisim@ e-postası yok');
     assert.ok(html.includes(`href="${SITE_PHONE_TEL}"`), 'telefon bağlantısı yok');
     assert.doesNotMatch(text, /\b(mah\.|mahalle|sokak|sk\.|cadde|cad\.|apt|daire|no:)/i, 'sayfada açık adres olmamalı');
   });
 
-  it('ana sayfa ve SalonZeka sayfası SalonZeka\'nın Mustafa Ayverdi tarafından geliştirildiğini açıkça söylemeli', () => {
-    assert.ok(bodyText(read('index.html')).includes("SalonZeka'nın geliştiricisi ve sağlayıcısı benim"), 'ana sayfada sahiplik cümlesi yok');
+  it('ana sayfa ve RandevuZeka sayfası RandevuZeka\'nın Mustafa Ayverdi tarafından geliştirildiğini açıkça söylemeli', () => {
+    assert.ok(bodyText(read('index.html')).includes("RandevuZeka'nın geliştiricisi ve sağlayıcısı benim"), 'ana sayfada sahiplik cümlesi yok');
     assert.ok(
-      bodyText(read('projeler/salonzeka.html')).includes('SalonZeka, Mustafa Ayverdi tarafından geliştirilen ve sunulan bir hizmettir.'),
-      'SalonZeka sayfasında sahiplik cümlesi yok',
+      bodyText(read('projeler/randevuzeka.html')).includes('RandevuZeka, Mustafa Ayverdi tarafından geliştirilen ve sunulan bir hizmettir.'),
+      'RandevuZeka sayfasında sahiplik cümlesi yok',
     );
   });
 

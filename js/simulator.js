@@ -3,9 +3,9 @@
  * @type {Record<string, { id: string, name: string, summary: string, steps: Array<{ code: string, title: string, detail: string, status: string, logSummary: string }> }>}
  */
 export const SIMULATOR_SCENARIOS = {
-  salonzeka: {
-    id: 'salonzeka',
-    name: 'SalonZeka · 7/24 WhatsApp Randevu Asistanı',
+  randevuzeka: {
+    id: 'randevuzeka',
+    name: 'RandevuZeka · 7/24 WhatsApp Randevu Asistanı',
     summary:
       'Siz uyurken bile WhatsApp’tan gelen randevu taleplerini karşılar, takvime işler ve müşterinize hatırlatma gönderir.',
     steps: [
@@ -223,7 +223,7 @@ function buildWhatsAppShell() {
   const header = createEl('div', 'sim-wa-header');
   const avatar = createEl('div', 'sim-wa-avatar', 'SZ');
   const headInfo = createEl('div', 'sim-wa-head-info');
-  const titleEl = createEl('div', 'sim-wa-title', 'SalonZeka Asistan');
+  const titleEl = createEl('div', 'sim-wa-title', 'RandevuZeka Asistan');
   const statusEl = createEl('div', 'sim-wa-status', 'çevrimiçi');
   headInfo.append(titleEl, statusEl);
   header.append(avatar, headInfo);
@@ -357,9 +357,9 @@ function buildRandevuPanelShell() {
 }
 
 /**
- * SalonZeka: Sol WhatsApp <-> Sağ Randevu Paneli otonom sahnesini kurar.
+ * RandevuZeka: Sol WhatsApp <-> Sağ Randevu Paneli otonom sahnesini kurar.
  */
-function setupSalonZekaStage(leftEl, rightEl, instantComplete, schedule) {
+function setupRandevuZekaStage(leftEl, rightEl, instantComplete, schedule) {
   const wa = buildWhatsAppShell();
   leftEl.replaceChildren(wa.shell);
 
@@ -848,7 +848,7 @@ function setupYesilNesilStage(leftEl, rightEl, instantComplete, schedule) {
 let teardownPrevious = null;
 
 const STAGE_BUILDERS = {
-  salonzeka: setupSalonZekaStage,
+  randevuzeka: setupRandevuZekaStage,
   vitrinos: setupVitrinOSStage,
   yesilnesil: setupYesilNesilStage,
 };
@@ -916,10 +916,10 @@ export function initSimulator() {
 
   let activeKey =
     tabs.find((tab) => tab.classList.contains('is-active') || tab.getAttribute('aria-selected') === 'true')
-      ?.getAttribute('data-sim-tab') || 'salonzeka';
+      ?.getAttribute('data-sim-tab') || 'randevuzeka';
 
   if (!getScenario(activeKey)) {
-    activeKey = 'salonzeka';
+    activeKey = 'randevuzeka';
   }
 
   // Roving tabindex başlangıcı: yalnız aktif sekme Tab sırasında

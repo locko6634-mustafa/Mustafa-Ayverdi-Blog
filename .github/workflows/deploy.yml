@@ -160,7 +160,7 @@ jobs:
             echo "${url} -> ${code}"
           }
           check_status "${SITE_URL}/" 200
-          check_status "${SITE_URL}/assets/img/salonzeka-scene.jpg" 200
+          check_status "${SITE_URL}/assets/img/randevuzeka-scene.jpg" 200
           check_status "${SITE_URL}/kart" 200
           check_status "${SITE_URL}/iletisim" 200
           check_status "${SITE_URL}/gizlilik" 200
