@@ -2000,9 +2000,57 @@ describe('Meta İşletme Doğrulaması Hazırlığı', () => {
     const problems = [];
     for (const f of files) {
       const s = fs.readFileSync(f, 'utf8');
-      if (s.includes('mustafaayverdi.dev')) problems.push(`${path.relative(ROOT_DIR, f)}: mustafaayverdi.dev`);
+      // Sosyal hesap adresleri (Instagram/TikTok kullanıcı adı) `.dev` ile biter; alan adı denetimi onları hariç tutar.
+      const sansSosyal = s.replace(/https:\/\/www\.(?:instagram|tiktok)\.com\/@?mustafaayverdi\.dev\/?/g, '');
+      if (sansSosyal.includes('mustafaayverdi.dev')) problems.push(`${path.relative(ROOT_DIR, f)}: mustafaayverdi.dev`);
       if (s.includes('locko6634@gmail.com')) problems.push(`${path.relative(ROOT_DIR, f)}: gmail adresi`);
     }
     assert.deepEqual(problems, [], problems.join('\n'));
+  });
+});
+
+// --- Sosyal medya linkleri sözleşmesi (Mustafa'nın kişisel hesapları; 2026-11-24) ---
+
+describe('Sosyal Medya Linkleri', () => {
+  const SOCIAL = [
+    ['Instagram', 'https://www.instagram.com/mustafaayverdi.dev/'],
+    ['TikTok', 'https://www.tiktok.com/@mustafaayverdi.dev'],
+    ['YouTube', 'https://www.youtube.com/@mustafaayverdidev'],
+  ];
+  const pages = () => {
+    const out = [];
+    const walk = (dir) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (e.name.endsWith('.html') && e.name !== 'kart.html') out.push(p);
+      }
+    };
+    walk(ROOT_DIR);
+    return out;
+  };
+
+  it('alt bilgideki İLETİŞİM grubunda üç sosyal link güvenli rel ve etiketle bulunmalı (kart hariç tüm sayfalar, iletisim ve 404 dahil)', () => {
+    const files = pages();
+    assert.ok(files.length >= 10, 'sayfalar bulunamadı');
+    for (const f of files) {
+      const html = fs.readFileSync(f, 'utf8');
+      const footer = html.match(/<footer\b[\s\S]*?<\/footer>/i)?.[0] ?? '';
+      for (const [name, url] of SOCIAL) {
+        const attrs = findTags(footer, ['a']).find((t) => t.attrs.get('href') === url)?.attrs;
+        assert.ok(attrs, `${path.relative(ROOT_DIR, f)}: footer'da ${name} linki yok`);
+        assert.equal(attrs.get('target'), '_blank', `${name} target`);
+        assert.equal(attrs.get('rel'), 'me noopener noreferrer', `${name} rel`);
+        assert.equal(attrs.get('aria-label'), name, `${name} aria-label`);
+      }
+    }
+  });
+
+  it('ana sayfa Person şemasında sameAs üç sosyal adresi içermeli', () => {
+    const html = fs.readFileSync(path.join(ROOT_DIR, 'index.html'), 'utf8');
+    for (const [name, url] of SOCIAL) {
+      assert.ok(html.includes(`<link itemprop="sameAs" href="${url}">`), `${name} sameAs eksik`);
+    }
   });
 });
