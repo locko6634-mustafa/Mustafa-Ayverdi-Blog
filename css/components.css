@@ -638,8 +638,30 @@
     place-items: center;
     border-radius: var(--radius-pill);
     border: 1px solid var(--line);
+    position: relative;
     background-color: var(--white);
+    font-size: 0;
     transition: transform var(--dur-base) var(--ease), background-color var(--dur-fast) var(--ease);
+  }
+
+  /* "+" glifi fontun matematik ekseninde oturup kaydığı için iki çubukla çizilir. */
+  .accordion-icon::before,
+  .accordion-icon::after,
+  .acc-icon::before,
+  .acc-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 12px;
+    height: 1.5px;
+    border-radius: 1px;
+    background-color: currentColor;
+  }
+
+  .accordion-icon::after,
+  .acc-icon::after {
+    transform: rotate(90deg);
   }
 
   .accordion-trigger[aria-expanded="true"] .accordion-icon,
