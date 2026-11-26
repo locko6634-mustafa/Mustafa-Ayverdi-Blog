@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Mustafa Ayverdi Blog — Proje Bağlamı
 
 ## Kimlik, Dil ve Canlı Ürünler
@@ -31,4 +35,7 @@
 - **Sosyal medya (2026-11-24):** Mustafa'nın kişisel hesapları `https://www.instagram.com/mustafaayverdi.dev/`, `https://www.tiktok.com/@mustafaayverdi.dev`, `https://www.youtube.com/@mustafaayverdidev`; `/kart` hariç tüm sayfaların alt bilgi İLETİŞİM grubunda (GitHub'dan sonra, `target="_blank" rel="me noopener noreferrer"`, `aria-label`) ve `index.html` Person şemasında `sameAs` olarak yer alır. Header, hero ve `/kart`'a eklenmez; `/gizlilik` değişmez (dış script/embed yok, yalnız bağlantı). Gizli `.dev` alan adı testi bu üç adresi hariç tutar.
 - **Meta doğrulama hazırlığı:** robots.txt Meta tarayıcılarını engellemez; ana sayfa, `/iletisim`, `/gizlilik` indekslenir ve og etiketleri `mustafaayverdi.com`'u gösterir. Menü 6 bağlantıyla 1024px altında hamburger'e geçer (`css/components.css` + `js/nav.js` `min-width: 1025px` birlikte değişir).
 - **Doğrulama Komutu:** `(for f in js/*.js; do node --check --input-type=module < "$f" || exit 1; done) && node --test tests/smoke.test.mjs` (`60/60` test geçmeli; "Kartvizit Sayfası (/kart)" grubu 12, "Meta İşletme Doğrulaması Hazırlığı" grubu 8, "Sosyal Medya Linkleri" grubu 2 test).
+- **Araç zinciri:** Build, bundler, linter veya `package.json` yok; dosyalar olduğu gibi yayınlanır. Yalnız Node 22 (`node:test`) ve yerel sunucu için Python gerekir.
+- **Tek test grubu:** `node --test --test-name-pattern="Kartvizit" tests/smoke.test.mjs` (desen `describe`/`it` adına uyar). Testler tek dosyada, HTML/CSS/deploy.yml'yi metin olarak okuyan sözleşme testleridir; `js/simulator.js` doğrudan import edilir, çalışma zamanı testleri stub DOM kullanır. Test sayısı değişirse yukarıdaki `60/60` ve grup sayıları da güncellenir.
+- **Deploy hattı:** `main`'e push → `.github/workflows/deploy.yml`: sözdizimi + smoke test → beyaz listeli staging (kök: `index/404/kart/iletisim/gizlilik.html`, `robots.txt`, `sitemap.xml`; dizinler: `css js assets notlar projeler`; staging'de nokta dosyaları, `*.md`, `*.sh`, `*.pem/key/bak` silinir) → `rsync --delete` (`/.well-known/` korunur) → canlı sağlık kontrolü. Yeni kök sayfa/dizin eklerken `deploy.yml` beyaz listesi ve `yerel_sunucu.py` `ALLOWED_FILES`/`ALLOWED_DIRS` birlikte değişir; "Yayın Beyaz Listesi" testi ikisinin eşitliğini ve tüm yerel bağlantıların yayınlanan dosyalara gittiğini denetler.
 - **Yerel sunucu (Windows):** `powershell -ExecutionPolicy Bypass -File .\sunucu_baslat.ps1 [-Port 8000] [-NoBrowser]`; beyaz listeli `yerel_sunucu.py`yi gizli arka planda başlatır, PID ve `Stop-Process -Id <pid>` komutunu yazar. Bu dosyalar deploy beyaz listesinde olmadığı için yayınlanmaz.
